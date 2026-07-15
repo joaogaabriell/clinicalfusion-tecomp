@@ -1,0 +1,57 @@
+# =========================================================================
+#  ClinicalFusion — .gitignore
+# =========================================================================
+
+# -------------------------------------------------------------------------
+#  DADOS CREDENCIADOS (Symile-MIMIC / MIMIC-IV / PhysioNet)
+#  ATENCAO: os dados reais do PhysioNet sao de acesso credenciado e a DUA
+#  PROIBE redistribuicao. NUNCA versionar estes arquivos no GitHub.
+# -------------------------------------------------------------------------
+data/symile-mimic/
+data/symile_mimic/
+data/real/
+*.dcm
+*.hea
+*.dat
+data_npy/
+*.ckpt
+
+# Amostra sintetica gerada em massa (mantemos apenas alguns exemplos versionados
+# em data/sample_patients/. O restante gerado localmente fica ignorado.)
+data/generated/
+
+# -------------------------------------------------------------------------
+#  Python
+# -------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Ambientes virtuais
+.venv/
+venv/
+env/
+ENV/
+
+# -------------------------------------------------------------------------
+#  Streamlit / segredos
+# -------------------------------------------------------------------------
+.streamlit/secrets.toml
+.env
+*.key
+
+# -------------------------------------------------------------------------
+#  Editores / SO
+# -------------------------------------------------------------------------
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
