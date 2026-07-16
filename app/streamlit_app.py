@@ -7,6 +7,7 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import streamlit as st
+import streamlit.components.v1 as components
 from matplotlib.ticker import MultipleLocator
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -19,24 +20,76 @@ st.set_page_config(
     page_title="ClinicalFusion",
     page_icon=str(ASSETS / "favicon.png"),
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",
 )
 
 LOGO_B64 = base64.b64encode((ASSETS / "logo.svg").read_bytes()).decode()
 
+
+def _icone(conteudo: str) -> str:
+    return (
+        '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#0ea5e9" '
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+        f"{conteudo}</svg>"
+    )
+
+
+ICONES = {
+    "rx": _icone(
+        '<path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/>'
+        '<path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/>'
+        '<path d="M11.246 16.657a1 1 0 0 0 1.508 0l3.57-4.101A2.75 2.75 0 1 0 12 9.168a2.75 2.75 0 1 0-4.324 3.388z"/>'
+    ),
+    "ecg": _icone('<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>'),
+    "lab": _icone(
+        '<path d="M14 2v6a2 2 0 0 0 .245.96l5.51 10.08A2 2 0 0 1 18 22H6a2 2 0 0 1-1.755-2.96l5.51-10.08A2 2 0 0 0 10 8V2"/>'
+        '<path d="M6.453 15h11.094"/><path d="M8.5 2h7"/>'
+    ),
+    "clin": _icone(
+        '<rect x="8" y="2" width="8" height="4" rx="1"/>'
+        '<path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>'
+        '<path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/>'
+    ),
+}
+
 st.markdown(
     """
 <style>
-.block-container { max-width: 1180px; }
-.cf-grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1rem; }
-.cf-grid5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.8rem; margin-bottom: 1.2rem; }
-@media (max-width: 800px) { .cf-grid4, .cf-grid5 { grid-template-columns: repeat(2, 1fr); } }
-.cf-card { border: 1px solid rgba(128, 128, 128, 0.35); border-radius: 12px; padding: 1.1rem 0.9rem; text-align: center; }
-.cf-card .icone { font-size: 2.1rem; line-height: 1.2; }
-.cf-card .titulo { font-weight: 600; margin: 0.5rem 0 0.3rem; }
-.cf-card .texto { font-size: 0.85rem; opacity: 0.75; }
-.cf-passo { width: 28px; height: 28px; border-radius: 50%; background: #0ea5e9; color: #fff; font-weight: 700;
-            display: flex; align-items: center; justify-content: center; margin: 0 auto; }
+.block-container { max-width: 1180px; padding-top: 3.6rem; padding-bottom: 0.8rem; }
+.cf-hero { display: flex; align-items: center; justify-content: center; gap: 0.75rem; }
+.cf-hero img { width: clamp(44px, 4.5vw, 60px); }
+.cf-hero h1 { margin: 0; padding: 0; font-size: clamp(1.6rem, 3vw, 2.3rem); }
+.cf-sub { text-align: center; opacity: 0.8; max-width: 900px; margin: 0.4rem auto 0;
+          font-size: clamp(0.85rem, 1.1vw, 0.98rem); }
+.cf-secao { text-align: center; font-weight: 600; font-size: clamp(1rem, 1.4vw, 1.2rem); margin: 1rem 0 0.7rem; }
+.cf-grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.9rem; }
+.cf-grid5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.8rem; }
+@media (max-width: 900px) { .cf-grid4, .cf-grid5 { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 520px) { .cf-grid4, .cf-grid5 { grid-template-columns: 1fr; } }
+.cf-card { border: 1px solid rgba(128, 128, 128, 0.35); border-radius: 12px;
+           padding: clamp(0.6rem, 1.2vh, 1rem) 0.7rem; text-align: center; }
+.cf-card .icone { display: flex; justify-content: center; margin-bottom: 0.4rem; }
+.cf-card .titulo { font-weight: 600; font-size: clamp(0.85rem, 1.1vw, 0.95rem); margin-bottom: 0.25rem; }
+.cf-card .texto { font-size: clamp(0.75rem, 1vw, 0.82rem); opacity: 0.75; }
+.cf-passo { width: 26px; height: 26px; border-radius: 50%; background: #0ea5e9; color: #fff; font-weight: 700;
+            font-size: 0.85rem; display: flex; align-items: center; justify-content: center; margin: 0 auto 0.4rem; }
+div[data-testid="stElementContainer"]:has(> iframe[height="0"]) { display: none; }
+
+section[data-testid="stSidebar"] { transition: transform 0.25s ease; }
+section[data-testid="stSidebar"][aria-expanded="false"] {
+    visibility: visible !important;
+    position: fixed !important; top: 0; left: 0; height: 100vh !important; z-index: 1000;
+    width: 21rem !important; min-width: 21rem !important;
+    transform: translateX(calc(14px - 100%)) !important;
+}
+section[data-testid="stSidebar"][aria-expanded="false"]::after {
+    content: ""; position: absolute; top: 0; right: 0; width: 4px; height: 100%;
+    background: linear-gradient(180deg, #0ea5e9, #0f766e);
+}
+section[data-testid="stSidebar"][aria-expanded="false"].cf-peek {
+    transform: translateX(0) !important;
+    box-shadow: 8px 0 24px rgba(0, 0, 0, 0.35);
+}
 </style>
 """,
     unsafe_allow_html=True,
@@ -130,7 +183,8 @@ with st.sidebar:
     )
     st.divider()
 
-    st.button("🏠 Voltar à tela inicial", width="stretch", on_click=voltar_para_inicio)
+    if st.session_state.get("sel_paciente"):
+        st.button("🏠", width="stretch", help="Voltar à tela inicial", on_click=voltar_para_inicio)
     selecao = st.selectbox(
         "Paciente",
         list(PACIENTES),
@@ -148,27 +202,23 @@ with st.sidebar:
 if selecao is None:
     st.markdown(
         f"""
-<div style="text-align:center; padding:0.4rem 0 0.8rem;">
-  <img src="data:image/svg+xml;base64,{LOGO_B64}" width="96"/>
-  <h1 style="margin:0.6rem 0 0.3rem;">ClinicalFusion</h1>
-  <p style="opacity:0.8; margin:0;">Análise integrada de casos clínicos com LLMs multimodais · protótipo da interface (Semana 1)</p>
+<div class="cf-hero">
+  <img src="data:image/svg+xml;base64,{LOGO_B64}" alt="Logo ClinicalFusion"/>
+  <h1>ClinicalFusion</h1>
 </div>
+<p class="cf-sub">Integra radiografia de tórax, ECG, exames laboratoriais e dados clínicos do paciente e, a partir de uma
+pergunta em linguagem natural, gera um relatório clínico estruturado com apoio de um LLM multimodal —
+finalidade exclusivamente educacional. Protótipo da interface (Semana 1).</p>
 """,
         unsafe_allow_html=True,
     )
 
-    st.info(
-        "O ClinicalFusion reúne quatro modalidades de dados de um mesmo paciente e as envia, junto com a pergunta do "
-        "usuário, a um LLM multimodal que gera um relatório clínico estruturado — com finalidade exclusivamente educacional.",
-        icon="🧬",
-    )
-
-    st.markdown("<h3 style='text-align:center; margin-top:1.2rem;'>As quatro modalidades do caso</h3>", unsafe_allow_html=True)
+    st.markdown('<div class="cf-secao">As quatro modalidades do caso</div>', unsafe_allow_html=True)
     modalidades = [
-        ("🩻", "Radiografia de tórax", "Imagem do exame integrada à visão do caso."),
-        ("📈", "Eletrocardiograma", "Traçado do sinal com frequência e ritmo."),
-        ("🧪", "Exames laboratoriais", "Resultados com referências e alterações."),
-        ("📋", "Dados clínicos", "Demografia, queixa, história e medicações."),
+        (ICONES["rx"], "Radiografia de tórax", "Imagem do exame integrada à visão do caso."),
+        (ICONES["ecg"], "Eletrocardiograma", "Traçado do sinal com frequência e ritmo."),
+        (ICONES["lab"], "Exames laboratoriais", "Resultados com referências e alterações."),
+        (ICONES["clin"], "Dados clínicos", "Demografia, queixa, história e medicações."),
     ]
     cards = "".join(
         f'<div class="cf-card"><div class="icone">{icone}</div><div class="titulo">{titulo}</div><div class="texto">{texto}</div></div>'
@@ -176,7 +226,7 @@ if selecao is None:
     )
     st.markdown(f'<div class="cf-grid4">{cards}</div>', unsafe_allow_html=True)
 
-    st.markdown("<h3 style='text-align:center; margin-top:1.2rem;'>Fluxo da aplicação</h3>", unsafe_allow_html=True)
+    st.markdown('<div class="cf-secao">Fluxo da aplicação</div>', unsafe_allow_html=True)
     passos = [
         ("Seleção do caso", "Escolha o paciente na barra lateral."),
         ("Visualização", "Radiografia, ECG, laboratório e clínica."),
@@ -300,3 +350,54 @@ else:
                     st.dataframe(df[df["Alteração"] != "Normal"], hide_index=True, width="stretch")
         else:
             st.caption("O relatório estruturado aparecerá aqui após o envio de uma pergunta.")
+
+
+components.html(
+    """
+<script>
+const doc = window.parent.document;
+if (!doc.__cfHoverInit) {
+    doc.__cfHoverInit = true;
+    const SELETOR = 'section[data-testid="stSidebar"]';
+    try {
+        const armazem = doc.defaultView.localStorage;
+        Object.keys(armazem).filter(c => c.startsWith('stSidebarCollapsed')).forEach(c => armazem.removeItem(c));
+    } catch (e) {}
+    setTimeout(() => {
+        const barra = doc.querySelector(SELETOR);
+        if (barra && barra.getAttribute('aria-expanded') === 'true') {
+            const botao = doc.querySelector('[data-testid="stSidebarCollapseButton"] button');
+            if (botao) botao.click();
+        }
+    }, 400);
+    const fechar = () => {
+        setTimeout(() => {
+            const barra = doc.querySelector(SELETOR);
+            if (!barra || doc.__cfSobre) return;
+            if (doc.querySelector('[data-baseweb="popover"]')) { fechar(); return; }
+            barra.classList.remove('cf-peek');
+        }, 320);
+    };
+    doc.addEventListener('mouseover', (e) => {
+        const barra = e.target.closest ? e.target.closest(SELETOR) : null;
+        if (barra) { doc.__cfSobre = true; barra.classList.add('cf-peek'); }
+    });
+    doc.addEventListener('mouseout', (e) => {
+        if (!e.target.closest || !e.target.closest(SELETOR)) return;
+        if (e.relatedTarget && e.relatedTarget.closest && e.relatedTarget.closest(SELETOR)) return;
+        doc.__cfSobre = false;
+        fechar();
+    });
+    doc.addEventListener('mousemove', (e) => {
+        if (e.clientX <= 360 || doc.querySelector('[data-baseweb="popover"]')) return;
+        const barra = doc.querySelector(SELETOR);
+        if (barra && barra.getAttribute('aria-expanded') === 'false' && barra.classList.contains('cf-peek')) {
+            doc.__cfSobre = false;
+            barra.classList.remove('cf-peek');
+        }
+    });
+}
+</script>
+""",
+    height=0,
+)
