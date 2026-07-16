@@ -82,13 +82,18 @@ Clinical-Fusion---TECOMP/
 - [ ] 4. Definição da arquitetura da solução — `docs/04-...`
 - [ ] 5. Análise das tecnologias — `docs/05-...`
 - [x] 6. Organização do GitHub — este repositório
-- [ ] 7. Protótipo inicial da interface (Streamlit) — `app/`
+- [x] 7. Protótipo inicial da interface (Streamlit) — `app/`
 
 ---
 
 ## 🚀 Como executar
 
-> A stack e as instruções de execução serão definidas pela equipe responsável pela implementação. Ver [`requirements.txt`](requirements.txt) e [`app/README.md`](app/README.md).
+```bash
+pip install -r requirements.txt
+python -m streamlit run app/streamlit_app.py
+```
+
+O protótipo abre em <http://localhost:8501> com dados fictícios (*mock*). Detalhes em [`app/README.md`](app/README.md).
 
 ---
 
