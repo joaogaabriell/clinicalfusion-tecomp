@@ -50,8 +50,20 @@ ENV/
 # -------------------------------------------------------------------------
 #  Editores / SO
 # -------------------------------------------------------------------------
-.vscode/
+# `.vscode/*` (e nao `.vscode/`) para que o git entre na pasta: uma negacao nao
+# reinclui arquivo cujo diretorio pai foi excluido.
+.vscode/*
+# Excecao: o interpretador aponta para .venv por caminho relativo, entao esta
+# configuracao vale para toda a equipe e e versionada de proposito.
+!.vscode/settings.json
 .idea/
 *.swp
 .DS_Store
 Thumbs.db
+
+# -------------------------------------------------------------------------
+#  Obsidian
+#  O repositorio e symlinkado dentro de um cofre, e o plugin Zoottelkeeper
+#  gera estes indices dentro das pastas. Nao fazem parte do projeto.
+# -------------------------------------------------------------------------
+HUB *.md

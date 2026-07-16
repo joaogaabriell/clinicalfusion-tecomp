@@ -38,10 +38,16 @@ Clinical-Fusion---TECOMP/
 │   ├── 04-arquitetura-solucao.md
 │   └── 05-analise-tecnologias.md
 ├── data/                     # dados (reais ficam locais/ignorados; ver data/README.md)
-├── src/                      # código-fonte da aplicação (loaders, visualização, etc.)
+├── src/                      # código-fonte da aplicação
+│   ├── config.py             # caminhos, specs das modalidades, metadados do MIMIC
+│   ├── symile_source.py      # leitura do Symile-MIMIC bruto (credenciado)
+│   ├── mock.py               # geradores sintéticos (ECG e placeholder de radiografia)
+│   ├── build_subset.py       # monta o subconjunto uma-pasta-por-paciente
+│   └── loaders.py            # leitura do subconjunto (usado pela interface)
 ├── app/                      # protótipo da interface em Streamlit
 ├── notebooks/                # notebooks de exploração e validação dos dados
-└── tests/                    # testes automatizados
+├── tests/                    # testes automatizados
+└── .env.example              # modelo do .env (caminho dos dados credenciados)
 ```
 
 ---
@@ -76,24 +82,44 @@ Clinical-Fusion---TECOMP/
 
 ## 📋 Status — Entrega da Semana 1
 
-- [ ] 1. Estudo do dataset Symile-MIMIC — `docs/01-...`
-- [ ] 2. Organização das modalidades de dados — `docs/02-...`
-- [ ] 3. Leitura e visualização dos dados — `docs/03-...`
+- [ ] 1. Estudo do dataset Symile-MIMIC — levantamento dos dados em [`data/README.md`](data/README.md); falta redigir `docs/01-...`
+- [x] 2. Organização das modalidades de dados — [`docs/02-...`](docs/02-organizacao-modalidades.md) + `src/build_subset.py`
+- [ ] 3. Leitura e visualização dos dados — as 4 modalidades já carregam (`src/loaders.py`, `app/`); falta redigir `docs/03-...`
 - [ ] 4. Definição da arquitetura da solução — `docs/04-...`
 - [ ] 5. Análise das tecnologias — `docs/05-...`
 - [x] 6. Organização do GitHub — este repositório
 - [x] 7. Protótipo inicial da interface (Streamlit) — `app/`
+
+> ⚠️ **Achado que afeta a entrega:** o material do Symile-MIMIC disponibilizado veio **incompleto** — os sinais de ECG não vieram e o tensor de radiografias está truncado (46 imagens íntegras de $4.640$). Laboratório e dados clínicos são reais; ECG é mock e a radiografia é real só nos 46 primeiros casos. Detalhes e a pendência a levar à professora em [`data/README.md`](data/README.md).
 
 ---
 
 ## 🚀 Como executar
 
 ```bash
+# 1. ambiente (use python3 aqui — em algumas máquinas `python` não existe)
+python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
+
+# 2. apontar para os dados credenciados do Symile-MIMIC
+cp .env.example .env               # e ajuste SYMILE_MIMIC_DIR
+
+# 3. gerar o subconjunto local (150 casos, ~13 s)
+python -m src.build_subset
+
+# 4. subir a interface
 python -m streamlit run app/streamlit_app.py
 ```
 
-O protótipo abre em <http://localhost:8501> com dados fictícios (*mock*). Detalhes em [`app/README.md`](app/README.md).
+O protótipo abre em <http://localhost:8501>. Detalhes em [`app/README.md`](app/README.md).
+
+> 🔒 O passo 2 exige **credenciamento no PhysioNet** — os dados não acompanham o repositório. Ver [`data/README.md`](data/README.md).
+
+**Testes:**
+
+```bash
+python -m pytest tests
+```
 
 ---
 
