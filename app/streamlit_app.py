@@ -1,4 +1,15 @@
-"""ClinicalFusion — prototipo inicial da interface (Semana 1, dados ficticios)."""
+"""ClinicalFusion — interface do assistente multimodal para analise de casos clinicos.
+
+Estrutura do arquivo:
+    1. CONFIGURACAO      — page_config, logo e icones SVG
+    2. ESTILOS           — CSS global (cards, grids e comportamento da sidebar)
+    3. DADOS E FIGURAS   — cache das modalidades e geracao do grafico do ECG
+    4. RELATORIO         — montagem do texto estruturado
+    5. SIDEBAR           — logo, selecao do paciente e aviso educacional
+    6. TELA INICIAL      — hero, modalidades e fluxo (quando nenhum caso esta selecionado)
+    7. TELA DO CASO      — metricas + abas (clinica, RX, ECG, laboratorio, relatorio)
+    8. SCRIPT DA SIDEBAR — JS que abre a barra lateral ao aproximar o mouse da borda
+"""
 
 import base64
 import sys
@@ -14,6 +25,8 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from mock_data import PACIENTES, gerar_ecg, gerar_radiografia, rotulo_paciente, tabela_laboratorio
 
+# ---------------------------------------------------------------- 1. CONFIGURACAO
+
 ASSETS = Path(__file__).parent / "assets"
 
 st.set_page_config(
@@ -27,6 +40,7 @@ LOGO_B64 = base64.b64encode((ASSETS / "logo.svg").read_bytes()).decode()
 
 
 def _icone(conteudo: str) -> str:
+    """Envolve o traçado de um ícone Material no wrapper SVG usado nos cards."""
     return (
         '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#0ea5e9" '
         'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
@@ -52,6 +66,8 @@ ICONES = {
     ),
 }
 
+# ---------------------------------------------------------------- 2. ESTILOS (CSS)
+
 st.markdown(
     """
 <style>
@@ -73,10 +89,12 @@ st.markdown(
 .cf-card .texto { font-size: clamp(0.75rem, 1vw, 0.82rem); opacity: 0.75; }
 .cf-passo { width: 26px; height: 26px; border-radius: 50%; background: #0ea5e9; color: #fff; font-weight: 700;
             font-size: 0.85rem; display: flex; align-items: center; justify-content: center; margin: 0 auto 0.4rem; }
+/* Oculta o iframe do script auxiliar e os botoes nativos do Streamlit */
 div[data-testid="stElementContainer"]:has(> iframe[height="0"]) { display: none; }
 [data-testid="stAppDeployButton"] { display: none; }
 [data-testid="stHeaderActionElements"] { display: none; }
 
+/* #sidebar — barra recolhida fica como uma faixa fina; .cf-peek (via JS) a desliza para dentro */
 section[data-testid="stSidebar"] { transition: transform 0.25s ease; }
 section[data-testid="stSidebar"][aria-expanded="false"] {
     visibility: visible !important;
@@ -98,6 +116,9 @@ section[data-testid="stSidebar"][aria-expanded="false"].cf-peek {
 )
 
 
+# ---------------------------------------------------------------- 3. DADOS E FIGURAS
+
+
 @st.cache_data
 def radiografia_cache(pid: str):
     cfg = PACIENTES[pid]["xray"]
@@ -112,6 +133,7 @@ def ecg_cache(pid: str):
 
 
 def figura_ecg(pid: str, altura: float = 3.2):
+    """Traçado do ECG sobre o papel milimetrado (0,04 s por quadradinho menor)."""
     t, sinal = ecg_cache(pid)
     fig, ax = plt.subplots(figsize=(11, altura))
     ax.set_facecolor("#fff7f7")
@@ -129,6 +151,9 @@ def figura_ecg(pid: str, altura: float = 3.2):
     ax.set_title("Derivação II — 10 s", fontsize=10, loc="left")
     fig.tight_layout()
     return fig
+
+
+# ---------------------------------------------------------------- 4. RELATORIO
 
 
 def montar_relatorio(pid: str, pergunta: str) -> str:
@@ -166,10 +191,14 @@ def montar_relatorio(pid: str, pergunta: str) -> str:
 """
 
 
+# ---------------------------------------------------------------- 5. SIDEBAR
+
+
 def voltar_para_inicio():
     st.session_state.sel_paciente = None
 
 
+# #sidebar — logo (link para o menu), seletor de paciente e aviso educacional
 with st.sidebar:
     st.markdown(
         f"""
@@ -185,8 +214,11 @@ with st.sidebar:
     )
     st.divider()
 
+    # O botao so aparece quando ha um caso aberto; limpa a selecao e volta a tela inicial
     if st.session_state.get("sel_paciente"):
         st.button(":material/home: Menu principal", width="stretch", on_click=voltar_para_inicio)
+
+    # selecao == None controla qual das duas telas e renderizada abaixo
     selecao = st.selectbox(
         "Paciente",
         list(PACIENTES),
@@ -199,6 +231,8 @@ with st.sidebar:
     st.divider()
     st.warning("Uso **exclusivamente educacional**. Não realiza diagnóstico médico.", icon=":material/warning:")
 
+
+# ---------------------------------------------------------------- 6. TELA INICIAL
 
 if selecao is None:
     st.markdown(
@@ -241,6 +275,8 @@ finalidade exclusivamente educacional.</p>
     )
     st.markdown(f'<div class="cf-grid5">{etapas}</div>', unsafe_allow_html=True)
 
+# ---------------------------------------------------------------- 7. TELA DO CASO
+
 else:
     p = PACIENTES[selecao]
     demo, vitais = p["demografia"], p["sinais_vitais"]
@@ -248,6 +284,7 @@ else:
     st.markdown(f"## Caso clínico — `{selecao}`")
     st.caption(f"Admissão: {demo['admissao']}")
 
+    # Faixa de metricas: idade, sexo e os cinco sinais vitais
     with st.container(border=True):
         metricas = st.columns(7)
         metricas[0].metric("Idade", f"{demo['idade']} anos")
@@ -313,6 +350,8 @@ else:
         with col_b:
             st.dataframe(df, hide_index=True, width="stretch")
 
+    # Aba do relatorio: pergunta em linguagem natural -> etapas de processamento -> texto estruturado.
+    # O resultado fica em session_state por paciente para sobreviver aos reruns do Streamlit.
     with aba_relatorio:
         st.markdown("#### Pergunte sobre o caso em linguagem natural")
         with st.form(key=f"form_{selecao}", border=False):
@@ -356,6 +395,14 @@ else:
         else:
             st.caption("O relatório estruturado aparecerá aqui após o envio de uma pergunta.")
 
+
+# ---------------------------------------------------------------- 8. SCRIPT DA SIDEBAR
+#
+# #sidebar — o iframe (height=0, oculto via CSS) roda no documento pai e faz tres coisas:
+#   1. limpa o estado salvo pelo Streamlit para a barra sempre iniciar recolhida;
+#   2. recolhe a barra no primeiro carregamento;
+#   3. abre (.cf-peek) quando o mouse encosta na borda esquerda e fecha ao afastar,
+#      exceto se houver um popover/listbox aberto — senao o seletor fecharia junto.
 
 components.html(
     """

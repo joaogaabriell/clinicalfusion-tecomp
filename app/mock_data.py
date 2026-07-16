@@ -1,4 +1,4 @@
-"""Dados ficticios (mock) para o prototipo da Semana 1. Nenhum dado real do Symile-MIMIC."""
+"""Casos clinicos ficticios usados pela interface. Nenhum dado real do Symile-MIMIC."""
 
 import numpy as np
 import pandas as pd

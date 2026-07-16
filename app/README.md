@@ -1,6 +1,6 @@
 # app — Interface (Streamlit)
 
-Protótipo da interface do ClinicalFusion (item 7 da Semana 1).
+Interface do ClinicalFusion.
 
 ## Conteúdo
 
@@ -22,7 +22,7 @@ python -m streamlit run app/streamlit_app.py
 
 O app abre em <http://localhost:8501>.
 
-## Escopo do protótipo
+## Escopo atual
 
 - [x] Tela inicial;
 - [x] Seleção do paciente (barra lateral);
@@ -32,6 +32,6 @@ O app abre em <http://localhost:8501>.
 - [x] Campo para perguntas em linguagem natural;
 - [x] Área destinada ao relatório clínico (*placeholder*, resposta simulada).
 
-> ⚠️ Nesta fase o app usa **dados 100% fictícios** (*mock data*) gerados em `mock_data.py` — nenhum dado real do
-> Symile-MIMIC é utilizado ou versionado. A leitura dos dados reais (Semana 2) e a integração com o LLM multimodal
-> (Semana 3) substituirão os mocks.
+> ⚠️ A aplicação usa **dados 100% fictícios** gerados em `mock_data.py` — nenhum dado real do Symile-MIMIC é
+> utilizado ou versionado. A leitura dos dados reais e a integração com o LLM multimodal substituirão esses dados
+> nas próximas etapas.
