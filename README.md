@@ -2,9 +2,6 @@
 
 **Assistente Inteligente Multimodal para Análise Integrada de Casos Clínicos utilizando LLMs Multimodais**
 
-> ⚠️ **Aviso:** ferramenta com finalidade **exclusivamente educacional**. **Não realiza diagnóstico médico** e **não substitui avaliação profissional**.
-
----
 
 ## 📌 Sobre o projeto
 
@@ -102,16 +99,3 @@ Detalhes em [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ---
 
-## 👥 Equipe
-
-| Nome | GitHub | Responsabilidade |
-|------|--------|------------------|
-| João Gabriel | [@joaogaabriell](https://github.com/joaogaabriell) | Organização do repositório / _(a completar)_ |
-| _a completar_ | | |
-| _a completar_ | | |
-
----
-
-## 📄 Licença e uso
-
-Projeto acadêmico da disciplina de Tópicos Especiais em Computação (TECOMP). Uso exclusivamente educacional.
