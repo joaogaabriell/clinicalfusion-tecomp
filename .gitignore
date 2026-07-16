@@ -16,6 +16,14 @@ data/real/
 data_npy/
 *.ckpt
 
+# Rede de seguranca: o dataset baixado nao deve ficar dentro do repositorio
+# (o lugar dele e FORA da pasta do projeto — ver SETUP.md). Se alguem colocar
+# aqui mesmo assim, estas regras evitam que vire commit por um `git add -A`.
+physionet.org/
+physionet.org*.zip
+symile-mimic*.zip
+*.npy
+
 # Amostra sintetica gerada em massa (mantemos apenas alguns exemplos versionados
 # em data/sample_patients/. O restante gerado localmente fica ignorado.)
 data/generated/

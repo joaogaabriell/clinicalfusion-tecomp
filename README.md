@@ -96,8 +96,10 @@ Clinical-Fusion---TECOMP/
 
 ## 🚀 Como executar
 
+> 📖 **Primeira vez no projeto?** Siga o [**`SETUP.md`**](SETUP.md) — passo a passo para **Windows** e **Linux/macOS**, incluindo a configuração do `.env` e os erros mais comuns.
+
 ```bash
-# 1. ambiente (use python3 aqui — em algumas máquinas `python` não existe)
+# 1. ambiente (Windows: .venv\Scripts\Activate.ps1)
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 
@@ -113,7 +115,7 @@ python -m streamlit run app/streamlit_app.py
 
 O protótipo abre em <http://localhost:8501>. Detalhes em [`app/README.md`](app/README.md).
 
-> 🔒 O passo 2 exige **credenciamento no PhysioNet** — os dados não acompanham o repositório. Ver [`data/README.md`](data/README.md).
+> 🔒 O passo 2 exige **credenciamento no PhysioNet** — cada integrante baixa a própria cópia. A licença do dataset **proíbe compartilhar os dados**, inclusive entre a equipe e em repositório privado. Ver [`SETUP.md`](SETUP.md) e [`data/README.md`](data/README.md).
 
 **Testes:**
 

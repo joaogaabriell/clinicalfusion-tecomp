@@ -78,3 +78,16 @@ Commits devem ser **atômicos** (uma mudança lógica por commit) e feitos **na 
 - **Nunca** commitar dados reais do Symile-MIMIC / PhysioNet (proibido pela DUA).
 - O `.gitignore` já bloqueia as pastas de dados credenciados — não force o versionamento delas.
 - Chaves de API de LLMs vão em `.env` ou `.streamlit/secrets.toml` (também ignorados).
+
+### Por que não subimos o dataset — nem para facilitar
+
+A dúvida aparece sempre, então fica registrado o porquê. A licença que vem com o dataset é a *PhysioNet Credentialed Health Data License 1.5.0*, cláusula 3:
+
+> *The LICENSEE will not share access to PhysioNet restricted data with anyone else.*
+
+- **"É de graça" não é "é público".** O acesso é gratuito, mas individual: exige conta no PhysioNet, treinamento CITI e a DUA assinada. Cada integrante baixa a **própria cópia**.
+- **Repositório privado não resolve.** Compartilhar com quem não é credenciado é redistribuição, mesmo dentro da equipe. O credenciamento é **nominal** — quem sobe responde pessoalmente, e a cláusula 9 mantém a obrigação mesmo após o fim do acordo.
+- **O git não esquece.** Uma vez no histórico, remover exige reescrevê-lo para todo o time, e qualquer clone ou fork já feito mantém a cópia.
+- **Não precisamos disso.** O `src/build_subset.py` é determinístico: mesmo `--n-casos`, mesmos casos, mesmos `case_id`. Todos trabalham sobre dados idênticos sem versionar um byte de paciente.
+
+Guarde o dataset **fora da pasta do repositório** e aponte o `.env` para ele — ver [`SETUP.md`](SETUP.md). Se `git status` mostrar `.zip`, `.npy` ou `.csv` do dataset, mova para fora; nunca use `git add -f`.
