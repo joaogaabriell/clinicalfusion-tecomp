@@ -1,5 +1,6 @@
 """ClinicalFusion — prototipo inicial da interface (Semana 1, dados ficticios)."""
 
+import base64
 import sys
 import time
 from pathlib import Path
@@ -19,6 +20,26 @@ st.set_page_config(
     page_icon=str(ASSETS / "favicon.png"),
     layout="wide",
     initial_sidebar_state="expanded",
+)
+
+LOGO_B64 = base64.b64encode((ASSETS / "logo.svg").read_bytes()).decode()
+
+st.markdown(
+    """
+<style>
+.block-container { max-width: 1180px; }
+.cf-grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1rem; }
+.cf-grid5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.8rem; margin-bottom: 1.2rem; }
+@media (max-width: 800px) { .cf-grid4, .cf-grid5 { grid-template-columns: repeat(2, 1fr); } }
+.cf-card { border: 1px solid rgba(128, 128, 128, 0.35); border-radius: 12px; padding: 1.1rem 0.9rem; text-align: center; }
+.cf-card .icone { font-size: 2.1rem; line-height: 1.2; }
+.cf-card .titulo { font-weight: 600; margin: 0.5rem 0 0.3rem; }
+.cf-card .texto { font-size: 0.85rem; opacity: 0.75; }
+.cf-passo { width: 28px; height: 28px; border-radius: 50%; background: #0ea5e9; color: #fff; font-weight: 700;
+            display: flex; align-items: center; justify-content: center; margin: 0 auto; }
+</style>
+""",
+    unsafe_allow_html=True,
 )
 
 
@@ -92,17 +113,31 @@ def montar_relatorio(pid: str, pergunta: str) -> str:
 """
 
 
+def voltar_para_inicio():
+    st.session_state.sel_paciente = None
+
+
 with st.sidebar:
-    st.image(str(ASSETS / "logo.svg"), width=90)
-    st.markdown("## ClinicalFusion")
-    st.caption("Assistente Inteligente Multimodal para Análise Integrada de Casos Clínicos")
+    st.markdown(
+        f"""
+<div style="text-align:center; padding-top:0.4rem;">
+  <img src="data:image/svg+xml;base64,{LOGO_B64}" width="84"/>
+  <h2 style="margin:0.5rem 0 0.2rem;">ClinicalFusion</h2>
+  <p style="font-size:0.8rem; opacity:0.7; margin:0;">Assistente Inteligente Multimodal para Análise Integrada de Casos Clínicos</p>
+</div>
+""",
+        unsafe_allow_html=True,
+    )
     st.divider()
 
-    opcoes = ["inicio"] + list(PACIENTES)
+    st.button("🏠 Voltar à tela inicial", width="stretch", on_click=voltar_para_inicio)
     selecao = st.selectbox(
-        "Selecione o paciente",
-        opcoes,
-        format_func=lambda o: "🏠 Tela inicial" if o == "inicio" else rotulo_paciente(o),
+        "Paciente",
+        list(PACIENTES),
+        index=None,
+        placeholder="Selecione um caso clínico",
+        format_func=rotulo_paciente,
+        key="sel_paciente",
     )
 
     st.divider()
@@ -110,13 +145,17 @@ with st.sidebar:
     st.caption("Protótipo — Semana 1 · dados fictícios (mock). O subconjunto do Symile-MIMIC será integrado nas próximas semanas.")
 
 
-if selecao == "inicio":
-    col_logo, col_titulo = st.columns([1, 6])
-    with col_logo:
-        st.image(str(ASSETS / "logo.svg"), width=110)
-    with col_titulo:
-        st.title("ClinicalFusion")
-        st.markdown("**Análise integrada de casos clínicos com LLMs multimodais** · protótipo da interface (Semana 1)")
+if selecao is None:
+    st.markdown(
+        f"""
+<div style="text-align:center; padding:0.4rem 0 0.8rem;">
+  <img src="data:image/svg+xml;base64,{LOGO_B64}" width="96"/>
+  <h1 style="margin:0.6rem 0 0.3rem;">ClinicalFusion</h1>
+  <p style="opacity:0.8; margin:0;">Análise integrada de casos clínicos com LLMs multimodais · protótipo da interface (Semana 1)</p>
+</div>
+""",
+        unsafe_allow_html=True,
+    )
 
     st.info(
         "O ClinicalFusion reúne quatro modalidades de dados de um mesmo paciente e as envia, junto com a pergunta do "
@@ -124,32 +163,32 @@ if selecao == "inicio":
         icon="🧬",
     )
 
-    st.markdown("### As quatro modalidades do caso")
-    cards = st.columns(4)
-    conteudos = [
-        ("🩻", "Radiografia de tórax", "Imagem do exame com visualização integrada ao caso."),
-        ("📈", "Eletrocardiograma", "Traçado do ECG com frequência e ritmo do paciente."),
-        ("🧪", "Exames laboratoriais", "Tabela de resultados com valores de referência e alterações."),
-        ("📋", "Dados clínicos", "Demografia, queixa, história, comorbidades e medicações."),
+    st.markdown("<h3 style='text-align:center; margin-top:1.2rem;'>As quatro modalidades do caso</h3>", unsafe_allow_html=True)
+    modalidades = [
+        ("🩻", "Radiografia de tórax", "Imagem do exame integrada à visão do caso."),
+        ("📈", "Eletrocardiograma", "Traçado do sinal com frequência e ritmo."),
+        ("🧪", "Exames laboratoriais", "Resultados com referências e alterações."),
+        ("📋", "Dados clínicos", "Demografia, queixa, história e medicações."),
     ]
-    for coluna, (icone, titulo, texto) in zip(cards, conteudos):
-        with coluna, st.container(border=True):
-            st.markdown(f"### {icone}")
-            st.markdown(f"**{titulo}**")
-            st.caption(texto)
-
-    st.markdown("### Fluxo da aplicação")
-    st.markdown(
-        """
-1. **Seleção do caso** — escolha um paciente na barra lateral;
-2. **Visualização das modalidades** — radiografia, ECG, laboratório e dados clínicos lado a lado;
-3. **Pergunta em linguagem natural** — o usuário questiona o caso livremente;
-4. **Integração multimodal** — todas as modalidades são unificadas em um único prompt;
-5. **Relatório estruturado** — resumo, achados, hipóteses educacionais, justificativa e exames sugeridos.
-"""
+    cards = "".join(
+        f'<div class="cf-card"><div class="icone">{icone}</div><div class="titulo">{titulo}</div><div class="texto">{texto}</div></div>'
+        for icone, titulo, texto in modalidades
     )
+    st.markdown(f'<div class="cf-grid4">{cards}</div>', unsafe_allow_html=True)
 
-    st.success("👈 Para começar, **selecione um paciente** na barra lateral.", icon="✅")
+    st.markdown("<h3 style='text-align:center; margin-top:1.2rem;'>Fluxo da aplicação</h3>", unsafe_allow_html=True)
+    passos = [
+        ("Seleção do caso", "Escolha o paciente na barra lateral."),
+        ("Visualização", "Radiografia, ECG, laboratório e clínica."),
+        ("Pergunta", "Questione o caso em linguagem natural."),
+        ("Integração", "Modalidades unificadas em um prompt."),
+        ("Relatório", "Resumo, achados e hipóteses."),
+    ]
+    etapas = "".join(
+        f'<div class="cf-card"><div class="cf-passo">{n}</div><div class="titulo">{titulo}</div><div class="texto">{texto}</div></div>'
+        for n, (titulo, texto) in enumerate(passos, start=1)
+    )
+    st.markdown(f'<div class="cf-grid5">{etapas}</div>', unsafe_allow_html=True)
 
 else:
     p = PACIENTES[selecao]
@@ -158,11 +197,12 @@ else:
     st.markdown(f"## 🩺 Caso clínico — `{selecao}`")
     st.caption(f"Admissão: {demo['admissao']} · dados fictícios para demonstração")
 
-    metricas = st.columns(7)
-    metricas[0].metric("Idade", f"{demo['idade']} anos")
-    metricas[1].metric("Sexo", demo["sexo"])
-    for coluna, (nome, valor) in zip(metricas[2:], vitais.items()):
-        coluna.metric(nome, valor)
+    with st.container(border=True):
+        metricas = st.columns(7)
+        metricas[0].metric("Idade", f"{demo['idade']} anos")
+        metricas[1].metric("Sexo", demo["sexo"][0], help=demo["sexo"])
+        for coluna, (nome, valor) in zip(metricas[2:], vitais.items()):
+            coluna.metric(nome, valor)
 
     st.divider()
 
