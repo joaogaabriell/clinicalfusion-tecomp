@@ -1,0 +1,17 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="fundo" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0ea5e9"/>
+      <stop offset="1" stop-color="#0f766e"/>
+    </linearGradient>
+  </defs>
+  <rect x="16" y="16" width="480" height="480" rx="112" fill="url(#fundo)"/>
+  <g fill="#ffffff" opacity="0.18">
+    <rect x="212" y="92" width="88" height="328" rx="28"/>
+    <rect x="92" y="212" width="328" height="88" rx="28"/>
+  </g>
+  <polyline points="72,272 160,272 190,272 212,224 238,322 266,150 298,354 324,240 346,272 436,272"
+            fill="none" stroke="#ffffff" stroke-width="26"
+            stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="436" cy="272" r="17" fill="#99f6e4"/>
+</svg>
