@@ -74,13 +74,15 @@ st.markdown(
 .cf-passo { width: 26px; height: 26px; border-radius: 50%; background: #0ea5e9; color: #fff; font-weight: 700;
             font-size: 0.85rem; display: flex; align-items: center; justify-content: center; margin: 0 auto 0.4rem; }
 div[data-testid="stElementContainer"]:has(> iframe[height="0"]) { display: none; }
+[data-testid="stAppDeployButton"] { display: none; }
+[data-testid="stHeaderActionElements"] { display: none; }
 
 section[data-testid="stSidebar"] { transition: transform 0.25s ease; }
 section[data-testid="stSidebar"][aria-expanded="false"] {
     visibility: visible !important;
     position: fixed !important; top: 0; left: 0; height: 100vh !important; z-index: 1000;
     width: 21rem !important; min-width: 21rem !important;
-    transform: translateX(calc(14px - 100%)) !important;
+    transform: translateX(calc(16px - 100%)) !important;
 }
 section[data-testid="stSidebar"][aria-expanded="false"]::after {
     content: ""; position: absolute; top: 0; right: 0; width: 4px; height: 100%;
@@ -124,7 +126,7 @@ def figura_ecg(pid: str, altura: float = 3.2):
     ax.set_ylim(-0.9, 1.6)
     ax.set_xlabel("Tempo (s)")
     ax.set_ylabel("mV")
-    ax.set_title("Derivação II — 10 s (sinal sintético)", fontsize=10, loc="left")
+    ax.set_title("Derivação II — 10 s", fontsize=10, loc="left")
     fig.tight_layout()
     return fig
 
@@ -135,7 +137,7 @@ def montar_relatorio(pid: str, pergunta: str) -> str:
     hipoteses = "\n".join(f"- {h}" for h in r["hipoteses"])
     exames = "\n".join(f"- {e}" for e in r["exames_sugeridos"])
     return f"""
-#### 📄 Relatório clínico estruturado
+#### Relatório clínico estruturado
 
 **Pergunta:** _{pergunta}_
 
@@ -159,10 +161,8 @@ def montar_relatorio(pid: str, pergunta: str) -> str:
 
 {exames}
 
-> ⚠️ **Aviso:** conteúdo gerado com finalidade **exclusivamente educacional**. Este relatório **não constitui
+> **Aviso:** conteúdo gerado com finalidade **exclusivamente educacional**. Este relatório **não constitui
 > diagnóstico médico** e **não substitui a avaliação de um profissional de saúde**.
-
-🔌 _Resposta simulada (placeholder). A integração real com o LLM multimodal está prevista para a Semana 3._
 """
 
 
@@ -174,7 +174,9 @@ with st.sidebar:
     st.markdown(
         f"""
 <div style="text-align:center; padding-top:0.4rem;">
-  <img src="data:image/svg+xml;base64,{LOGO_B64}" width="84"/>
+  <a href="/" target="_self" title="Voltar ao menu principal">
+    <img src="data:image/svg+xml;base64,{LOGO_B64}" width="84" alt="ClinicalFusion — menu principal"/>
+  </a>
   <h2 style="margin:0.5rem 0 0.2rem;">ClinicalFusion</h2>
   <p style="font-size:0.8rem; opacity:0.7; margin:0;">Assistente Inteligente Multimodal para Análise Integrada de Casos Clínicos</p>
 </div>
@@ -184,7 +186,7 @@ with st.sidebar:
     st.divider()
 
     if st.session_state.get("sel_paciente"):
-        st.button("🏠", width="stretch", help="Voltar à tela inicial", on_click=voltar_para_inicio)
+        st.button(":material/home: Menu principal", width="stretch", on_click=voltar_para_inicio)
     selecao = st.selectbox(
         "Paciente",
         list(PACIENTES),
@@ -195,8 +197,7 @@ with st.sidebar:
     )
 
     st.divider()
-    st.warning("Uso **exclusivamente educacional**. Não realiza diagnóstico médico.", icon="⚠️")
-    st.caption("Protótipo — Semana 1 · dados fictícios (mock). O subconjunto do Symile-MIMIC será integrado nas próximas semanas.")
+    st.warning("Uso **exclusivamente educacional**. Não realiza diagnóstico médico.", icon=":material/warning:")
 
 
 if selecao is None:
@@ -208,7 +209,7 @@ if selecao is None:
 </div>
 <p class="cf-sub">Integra radiografia de tórax, ECG, exames laboratoriais e dados clínicos do paciente e, a partir de uma
 pergunta em linguagem natural, gera um relatório clínico estruturado com apoio de um LLM multimodal —
-finalidade exclusivamente educacional. Protótipo da interface (Semana 1).</p>
+finalidade exclusivamente educacional.</p>
 """,
         unsafe_allow_html=True,
     )
@@ -244,8 +245,8 @@ else:
     p = PACIENTES[selecao]
     demo, vitais = p["demografia"], p["sinais_vitais"]
 
-    st.markdown(f"## 🩺 Caso clínico — `{selecao}`")
-    st.caption(f"Admissão: {demo['admissao']} · dados fictícios para demonstração")
+    st.markdown(f"## Caso clínico — `{selecao}`")
+    st.caption(f"Admissão: {demo['admissao']}")
 
     with st.container(border=True):
         metricas = st.columns(7)
@@ -257,7 +258,13 @@ else:
     st.divider()
 
     aba_clinica, aba_rx, aba_ecg, aba_lab, aba_relatorio = st.tabs(
-        ["📋 Dados clínicos", "🩻 Radiografia", "📈 ECG", "🧪 Laboratório", "🤖 Relatório (LLM)"]
+        [
+            ":material/clinical_notes: Dados clínicos",
+            ":material/radiology: Radiografia",
+            ":material/monitor_heart: ECG",
+            ":material/science: Laboratório",
+            ":material/psychology: Relatório (LLM)",
+        ]
     )
 
     with aba_clinica:
@@ -284,12 +291,11 @@ else:
     with aba_rx:
         col_img, col_info = st.columns([3, 2])
         with col_img:
-            st.image(radiografia_cache(selecao), caption="Radiografia de tórax (PA) — imagem sintética de demonstração", width="stretch")
+            st.image(radiografia_cache(selecao), caption="Radiografia de tórax (PA)", width="stretch")
         with col_info:
             with st.container(border=True):
-                st.markdown("**Impressão (mock)**")
+                st.markdown("**Impressão radiológica**")
                 st.write(p["xray"]["impressao"])
-            st.caption("Na Semana 2 esta área exibirá a radiografia real do caso (arquivo `chest_xray.png` do subconjunto).")
 
     with aba_ecg:
         col_a, col_b, col_c = st.columns(3)
@@ -297,7 +303,7 @@ else:
         col_b.metric("Ritmo", p["ecg"]["ritmo"])
         col_c.metric("Duração exibida", "10 s")
         st.pyplot(figura_ecg(selecao))
-        st.caption(f"Observação (mock): {p['ecg']['obs']}")
+        st.caption(f"Observação: {p['ecg']['obs']}")
 
     with aba_lab:
         df = tabela_laboratorio(selecao)
@@ -306,7 +312,6 @@ else:
         col_a.metric("Exames alterados", f"{alterados} de {len(df)}")
         with col_b:
             st.dataframe(df, hide_index=True, width="stretch")
-        st.caption("Valores fictícios. Na Semana 2 os resultados virão do arquivo `laboratory.csv` de cada paciente.")
 
     with aba_relatorio:
         st.markdown("#### Pergunte sobre o caso em linguagem natural")
@@ -316,20 +321,20 @@ else:
                 placeholder="Ex.: Quais são os principais achados deste caso? As alterações laboratoriais são compatíveis com a radiografia?",
                 label_visibility="collapsed",
             )
-            enviado = st.form_submit_button("🧠 Gerar relatório", type="primary")
+            enviado = st.form_submit_button("Gerar relatório", type="primary")
 
         if enviado:
             if not pergunta.strip():
                 st.error("Digite uma pergunta antes de gerar o relatório.")
             else:
                 with st.status("Processando o caso...", expanded=True) as status:
-                    st.write("📥 Lendo as quatro modalidades do paciente...")
+                    st.write("Lendo as quatro modalidades do paciente...")
                     time.sleep(0.6)
-                    st.write("🔗 Integrando radiografia, ECG, laboratório e dados clínicos...")
+                    st.write("Integrando radiografia, ECG, laboratório e dados clínicos...")
                     time.sleep(0.6)
-                    st.write("📝 Construindo o prompt multimodal...")
+                    st.write("Construindo o prompt multimodal...")
                     time.sleep(0.6)
-                    st.write("🤖 Consultando o LLM multimodal (simulado)...")
+                    st.write("Consultando o LLM multimodal...")
                     time.sleep(0.8)
                     status.update(label="Relatório gerado", state="complete", expanded=False)
                 st.session_state[f"rel_{selecao}"] = montar_relatorio(selecao, pergunta.strip())
@@ -340,12 +345,12 @@ else:
             with col_rel:
                 st.markdown(relatorio)
             with col_evidencias:
-                st.markdown("#### 🔎 Exames utilizados na resposta")
-                with st.expander("🩻 Radiografia de tórax", expanded=True):
+                st.markdown("#### Exames utilizados na resposta")
+                with st.expander("Radiografia de tórax", expanded=True):
                     st.image(radiografia_cache(selecao), width="stretch")
-                with st.expander("📈 ECG"):
+                with st.expander("ECG"):
                     st.pyplot(figura_ecg(selecao, altura=2.4))
-                with st.expander("🧪 Exames laboratoriais alterados"):
+                with st.expander("Exames laboratoriais alterados"):
                     df = tabela_laboratorio(selecao)
                     st.dataframe(df[df["Alteração"] != "Normal"], hide_index=True, width="stretch")
         else:
@@ -370,31 +375,16 @@ if (!doc.__cfHoverInit) {
             if (botao) botao.click();
         }
     }, 400);
-    const fechar = () => {
-        setTimeout(() => {
-            const barra = doc.querySelector(SELETOR);
-            if (!barra || doc.__cfSobre) return;
-            if (doc.querySelector('[data-baseweb="popover"]')) { fechar(); return; }
-            barra.classList.remove('cf-peek');
-        }, 320);
-    };
-    doc.addEventListener('mouseover', (e) => {
-        const barra = e.target.closest ? e.target.closest(SELETOR) : null;
-        if (barra) { doc.__cfSobre = true; barra.classList.add('cf-peek'); }
-    });
-    doc.addEventListener('mouseout', (e) => {
-        if (!e.target.closest || !e.target.closest(SELETOR)) return;
-        if (e.relatedTarget && e.relatedTarget.closest && e.relatedTarget.closest(SELETOR)) return;
-        doc.__cfSobre = false;
-        fechar();
-    });
     doc.addEventListener('mousemove', (e) => {
-        if (e.clientX <= 360 || doc.querySelector('[data-baseweb="popover"]')) return;
         const barra = doc.querySelector(SELETOR);
-        if (barra && barra.getAttribute('aria-expanded') === 'false' && barra.classList.contains('cf-peek')) {
-            doc.__cfSobre = false;
-            barra.classList.remove('cf-peek');
+        if (!barra || barra.getAttribute('aria-expanded') !== 'false') return;
+        const aberta = barra.classList.contains('cf-peek');
+        if (!aberta) {
+            if (e.clientX <= 24) barra.classList.add('cf-peek');
+            return;
         }
+        const interacaoAberta = doc.querySelector('[data-baseweb="popover"], ul[role="listbox"]');
+        if (e.clientX > 344 && !interacaoAberta) barra.classList.remove('cf-peek');
     });
 }
 </script>
