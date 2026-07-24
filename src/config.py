@@ -141,8 +141,35 @@ def _ler_dotenv(caminho: Path) -> dict[str, str]:
         if not linha or linha.startswith("#") or "=" not in linha:
             continue
         chave, _, valor = linha.partition("=")
-        valores[chave.strip()] = valor.strip().strip('"').strip("'")
+        valor = valor.strip()
+        # Remove comentario na mesma linha (ex.: `CHAVE=valor  # nota`), a menos
+        # que o valor esteja entre aspas. Chaves de API nao contem '#', entao
+        # tudo a partir do primeiro '#' de um valor sem aspas e comentario.
+        if valor and valor[0] not in "\"'" and "#" in valor:
+            valor = valor.split("#", 1)[0].strip()
+        valores[chave.strip()] = valor.strip('"').strip("'")
     return valores
+
+
+def carregar_env(caminho: Path | None = None) -> list[str]:
+    """
+    Carrega as variaveis do .env para os.environ (sem sobrescrever as ja definidas).
+
+    Necessario porque os clientes de LLM (OpenAI/Gemini/Anthropic) leem as chaves
+    de os.environ, e este projeto nao usa python-dotenv. Valores vazios no .env
+    (ex.: `ANTHROPIC_API_KEY=`) sao ignorados, para nao mascarar uma variavel de
+    ambiente ja definida com uma string vazia.
+
+    Returns:
+        Lista das chaves efetivamente carregadas para o ambiente.
+    """
+    caminho = caminho or (REPO_ROOT / ".env")
+    carregadas = []
+    for chave, valor in _ler_dotenv(caminho).items():
+        if valor and chave not in os.environ:
+            os.environ[chave] = valor
+            carregadas.append(chave)
+    return carregadas
 
 
 def diretorio_fonte() -> Path:

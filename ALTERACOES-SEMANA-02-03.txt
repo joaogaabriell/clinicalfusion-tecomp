@@ -1,0 +1,137 @@
+================================================================================
+ ClinicalFusion — Resumo das alteracoes (Semana 2 e 3)
+ Branch: feature/semana-02-benchmark-llm-multimodal
+================================================================================
+
+VISAO GERAL
+-----------
+Foi construido todo o ambiente que integra o LLM multimodal, gera o relatorio
+clinico estruturado, valida as respostas (benchmark) e liga tudo na interface
+Streamlit. Tambem foram implementados varios desafios extras do enunciado.
+Cobertura: 80 testes automatizados passando.
+
+
+1. DATASET AUGMENTATION  (src/augmentation.py)
+----------------------------------------------
+- Como so temos 46 radiografias reais, geramos variacoes delas PRESERVANDO os
+  achados CheXpert (ground-truth do benchmark).
+- Transformacoes label-preserving: rotacao (+/-8), brilho/contraste/gama (+/-15%),
+  zoom-crop e ruido gaussiano. NAO ha espelhamento horizontal (inverteria a
+  lateralidade e quebraria rotulos).
+- Deterministico por (paciente, indice) -> reprodutivel.
+- Comando: python -m src.augmentation --n-variacoes 4   (46 x 5 = 230 imagens)
+- Saida: data/symile-mimic-aug/ (ignorada pelo Git; DUA proibe redistribuicao)
+
+
+2. CAMADA LLM COM ORQUESTRACAO LANGCHAIN  (src/llm/)
+----------------------------------------------------
+- langchain_client.py: um unico ClienteLangChain para os 3 provedores
+  (ChatOpenAI, ChatGoogleGenerativeAI, ChatAnthropic). Mesma mensagem multimodal,
+  mesma invocacao. Metodos: gerar (relatorio JSON), conversar (texto), chat_caso
+  (chat com/sem imagem).
+- prompt.py: monta o prompt multimodal com as 4 modalidades (ECG marcado como
+  sintetico) e exige saida JSON em PORTUGUES (traduz termos em ingles; mantem as
+  chaves CheXpert em ingles). Tambem gera o contexto textual do chat.
+- relatorio.py: esquema do relatorio (RelatorioClinico) — achados CheXpert
+  avaliaveis + resumo/achados/hipoteses/justificativa/exames/aviso (RF09).
+- catalogo.py: catalogo de modelos + variavel de ambiente + PRECO (custo/1M tokens).
+  A equipe decidiu usar APENAS o Gemini -> catalogo com gemini-flash,
+  gemini-flash-lite, gemini-2-flash e gemini-pro. O codigo (LangChain) continua
+  suportando OpenAI e Anthropic; para reativar, descomente as linhas em
+  ENV_POR_PROVEDOR e readicione as entradas no CATALOGO.
+- extras.py: traducao do relatorio para linguagem acessivel ao paciente.
+- chat.py: modo chat conversacional (respostas diretas, com memoria).
+
+Aprendizados tecnicos:
+- Gemini 3.x: thinking_budget=0 (senao trunca o JSON). SDK oficial google-genai
+  (o google-generativeai foi descontinuado). Aliases 2.5 bloqueados p/ contas
+  novas -> usamos 3.5-flash.
+- com_retry: repete erros transitorios (503/rate-limit) e FALHA RAPIDO em
+  quota/billing esgotados.
+- .env carregado por config.carregar_env() (ignora comentarios inline).
+
+
+3. BENCHMARK ANCORADO NO CHEXPERT  (src/benchmark/)
+---------------------------------------------------
+- metricas.py: F1/precisao/recall dos achados (classe "positivo"), acuracia,
+  completude do relatorio, latencia, tokens e CUSTO estimado (USD).
+- runner.py: roda os modelos disponiveis sobre os casos com radiografia real
+  (+ augmentations com --com-aug), gera benchmark_resultados/relatorio.md,
+  resumo.csv e respostas brutas.
+- Comandos:
+    python -m src.benchmark.runner --listar
+    python -m src.benchmark.runner --com-aug
+    python -m src.benchmark.runner --modelos gemini-flash gpt-4o
+
+
+4. INTERFACE STREAMLIT  (app/streamlit_app.py)
+----------------------------------------------
+Requisitos RF01-RF10 cobertos. Abas: Dados clinicos, Radiografia, ECG,
+Laboratorio, CHAT, RELATORIO, COMPARAR 2 CASOS.
+- Aba CHAT: perguntas e respostas conversacionais com memoria. Por padrao NAO
+  envia a imagem (usa os achados CheXpert rotulados) -> ~70% menos tokens.
+  Toggle "Analisar imagem" para visao real. Contador de tokens por resposta.
+- Aba RELATORIO: relatorio estruturado (RF08/RF09) + painel de evidencias (RF10)
+  + metricas (latencia/tokens/CUSTO) + botoes "Explicar para o paciente" e
+  "Baixar PDF".
+- Aba COMPARAR 2 CASOS: gera relatorio de dois casos lado a lado.
+- Sidebar: HISTORICO das geracoes da sessao.
+- Mensagens de erro amigaveis (quota/billing/503) em vez do JSON cru.
+
+
+5. DESAFIOS EXTRAS IMPLEMENTADOS
+--------------------------------
+[x] Comparacao entre diferentes LLMs (benchmark)
+[x] Painel de metricas (tempo/tokens/custo)
+[x] Traducao do relatorio para linguagem do paciente
+[x] Geracao do relatorio em PDF (src/export_pdf.py)
+[x] Comparacao entre dois casos clinicos
+[x] Historico de casos analisados
+[x] Ponto de entrada para n8n (src/gerar_relatorio.py -> JSON)
+[ ] Explicacao visual dos achados (bounding boxes) — nao implementado
+[ ] n8n rodando — so o ponto de entrada + guia (docs/09)
+
+
+6. DOCUMENTACAO
+---------------
+- docs/06-benchmark-llm-multimodal.md  — ambiente de benchmark
+- docs/07-relatorio-tecnico.md         — relatorio tecnico (entregavel)
+- docs/08-apresentacao.md              — roteiro de slides
+- docs/09-integracao-n8n.md            — automacao
+- README.md e docs/README.md atualizados
+
+
+7. DEPENDENCIAS ADICIONADAS (requirements.txt)
+----------------------------------------------
+langchain-core, langchain-openai, langchain-google-genai, langchain-anthropic,
+fpdf2. (openai/google-genai/anthropic vem via LangChain.)
+
+
+8. OTIMIZACAO DE TOKENS (chat)
+------------------------------
+- Chat em modo economico por padrao: sem imagem, usando os achados CheXpert
+  rotulados. Cada pergunta caiu de ~1.800 para ~520 tokens de entrada (~70% menos).
+- OBS: o limite do free-tier do Gemini e por REQUISICOES (20/dia por modelo),
+  nao por tokens; a otimizacao reduz custo/tokens por chamada, nao aumenta o
+  numero de requisicoes gratuitas.
+
+
+9. PROVEDOR (decisao da equipe: apenas Gemini)
+----------------------------------------------
+- Gemini (Google): funcionou ao vivo (relatorio e chat reais em PT).
+  Free-tier = 20 requisicoes/dia POR MODELO -> troque de modelo no seletor
+  quando um esgotar (429), ou habilite billing no projeto Google Cloud.
+- OpenAI e Anthropic: suportados pelo codigo, mas fora do catalogo por decisao
+  da equipe.
+
+
+COMO EXECUTAR
+-------------
+  python -m venv .venv && .venv\Scripts\Activate.ps1   (Windows)
+  pip install -r requirements.txt
+  copy .env.example .env   (ajuste SYMILE_MIMIC_DIR e as chaves)
+  python -m src.build_subset --n-casos 150
+  python -m src.augmentation --n-variacoes 4
+  python -m streamlit run app/streamlit_app.py
+  python -m pytest tests
+================================================================================

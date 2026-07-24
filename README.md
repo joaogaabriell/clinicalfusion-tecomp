@@ -31,20 +31,29 @@ Clinical-Fusion---TECOMP/
 ├── CONTRIBUTING.md           # fluxo de trabalho, branches e padrão de commits
 ├── requirements.txt          # dependências (stack a ser confirmada pela equipe)
 ├── .gitignore                # protege dados credenciados de irem ao GitHub
-├── docs/                     # documentação da Semana 1 (itens da entrega)
+├── docs/                     # documentação
 │   ├── 01-estudo-dataset-symile-mimic.md
 │   ├── 02-organizacao-modalidades.md
 │   ├── 03-leitura-visualizacao.md
 │   ├── 04-arquitetura-solucao.md
-│   └── 05-analise-tecnologias.md
+│   ├── 05-analise-tecnologias.md
+│   ├── 06-benchmark-llm-multimodal.md   # ambiente de benchmark (Semana 2/3)
+│   ├── 07-relatorio-tecnico.md          # relatório técnico (entregável)
+│   ├── 08-apresentacao.md               # roteiro de slides
+│   └── 09-integracao-n8n.md             # automação (desafio extra)
 ├── data/                     # dados (reais ficam locais/ignorados; ver data/README.md)
 ├── src/                      # código-fonte da aplicação
 │   ├── config.py             # caminhos, specs das modalidades, metadados do MIMIC
 │   ├── symile_source.py      # leitura do Symile-MIMIC bruto (credenciado)
 │   ├── mock.py               # geradores sintéticos (ECG e placeholder de radiografia)
 │   ├── build_subset.py       # monta o subconjunto uma-pasta-por-paciente
-│   └── loaders.py            # leitura do subconjunto (usado pela interface)
-├── app/                      # protótipo da interface em Streamlit
+│   ├── loaders.py            # leitura do subconjunto (usado pela interface)
+│   ├── augmentation.py       # augmentation das radiografias reais (preserva CheXpert)
+│   ├── export_pdf.py         # exportação do relatório em PDF (extra)
+│   ├── gerar_relatorio.py    # CLI: gera o relatório de um caso em JSON (n8n/cron)
+│   ├── llm/                  # orquestração LangChain: prompt, relatório, provedores, custo
+│   └── benchmark/            # benchmark ancorado no CheXpert (F1, latência, custo)
+├── app/                      # interface em Streamlit
 ├── notebooks/                # notebooks de exploração e validação dos dados
 ├── tests/                    # testes automatizados
 └── .env.example              # modelo do .env (caminho dos dados credenciados)
@@ -71,12 +80,17 @@ Clinical-Fusion---TECOMP/
 
 ## 🗓️ Cronograma (1 mês)
 
-| Semana | Objetivo |
-|--------|----------|
-| **1** | Conhecer o dataset, selecionar os casos, organizar as modalidades, definir a arquitetura |
-| 2 | Leitura das imagens, ECGs e exames laboratoriais; interface inicial |
-| 3 | Integrar o LLM multimodal, desenvolver prompts, gerar relatórios, validar respostas |
-| 4 | Testes finais, refinamento, documentação, apresentação e vídeo |
+| Semana | Objetivo | Status |
+|--------|----------|--------|
+| **1** | Conhecer o dataset, selecionar os casos, organizar as modalidades, definir a arquitetura | ✅ |
+| **2** | Leitura das imagens, ECGs e exames laboratoriais; interface inicial | ✅ |
+| **3** | Integrar o LLM multimodal, desenvolver prompts, gerar relatórios, validar respostas | ✅ |
+| 4 | Testes finais, refinamento, documentação, apresentação e vídeo | 🔄 (falta o vídeo) |
+
+**Requisitos:** RF01–RF10 implementados. **Extras (+20%):** comparação de LLMs
+(benchmark), painel de métricas (tempo/custo), tradução para o paciente, PDF,
+comparação de 2 casos, histórico e ponto de entrada para n8n. Detalhes no
+[relatório técnico](docs/07-relatorio-tecnico.md).
 
 ---
 

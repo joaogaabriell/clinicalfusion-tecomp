@@ -8,6 +8,7 @@
 #  PROIBE redistribuicao. NUNCA versionar estes arquivos no GitHub.
 # -------------------------------------------------------------------------
 data/symile-mimic/
+data/symile-mimic-aug/
 data/symile_mimic/
 data/real/
 *.dcm
@@ -27,6 +28,10 @@ symile-mimic*.zip
 # Amostra sintetica gerada em massa (mantemos apenas alguns exemplos versionados
 # em data/sample_patients/. O restante gerado localmente fica ignorado.)
 data/generated/
+
+# Resultados do benchmark de LLMs (respostas brutas, CSV e relatorio gerados
+# localmente; podem conter texto de saida dos modelos).
+benchmark_resultados/
 
 # -------------------------------------------------------------------------
 #  Python

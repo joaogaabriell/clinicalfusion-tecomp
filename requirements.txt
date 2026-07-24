@@ -15,6 +15,9 @@ numpy>=1.24
 pillow>=10.0
 matplotlib>=3.7
 
+# Exportacao do relatorio em PDF (desafio extra)
+fpdf2>=2.7
+
 # Testes
 pytest>=8.0
 
@@ -22,7 +25,10 @@ pytest>=8.0
 # opencv-python>=4.9        # processamento de imagem avancado (radiografia)
 # wfdb>=4.1                 # leitura de sinais fisiologicos (ECG) no formato PhysioNet
 
-# --- Integracao com LLM multimodal (Semana 3+) ---
-# openai>=1.30             # GPT-4o
-# google-generativeai>=0.7 # Gemini 2.5 Flash
-# langchain>=0.2           # orquestracao (opcional)
+# --- Integracao com LLM multimodal e benchmark (Semana 2/3) ---
+# Orquestracao via LangChain: um chat model por provedor, mesma invocacao.
+# Importados de forma preguicosa: instale so os provedores que for usar.
+langchain-core>=0.3
+langchain-openai>=0.2        # GPT-4o / GPT-4.1
+langchain-google-genai>=2.1  # Gemini 2.5 Flash / Pro
+langchain-anthropic>=0.3     # Claude (Opus 4.8 / Sonnet 5)

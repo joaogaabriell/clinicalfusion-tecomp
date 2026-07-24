@@ -1,15 +1,16 @@
-# Documentação — Entrega da Semana 1
+# Documentação — ClinicalFusion
 
-Esta pasta reúne os documentos exigidos na entrega da Semana 1 do ClinicalFusion. Cada arquivo é um **template a ser preenchido pela equipe** e corresponde a um item da entrega.
+| # | Documento | Conteúdo |
+|---|-----------|----------|
+| 01 | [`01-estudo-dataset-symile-mimic.md`](01-estudo-dataset-symile-mimic.md) | Estudo do dataset Symile-MIMIC |
+| 02 | [`02-organizacao-modalidades.md`](02-organizacao-modalidades.md) | Organização das modalidades de dados |
+| 03 | [`03-leitura-visualizacao.md`](03-leitura-visualizacao.md) | Leitura e visualização dos dados |
+| 04 | [`04-arquitetura-solucao.md`](04-arquitetura-solucao.md) | Arquitetura da solução |
+| 05 | [`05-analise-tecnologias.md`](05-analise-tecnologias.md) | Análise das tecnologias |
+| 06 | [`06-benchmark-llm-multimodal.md`](06-benchmark-llm-multimodal.md) | Ambiente de benchmark de LLMs (Semana 2/3) |
+| 07 | [`07-relatorio-tecnico.md`](07-relatorio-tecnico.md) | **Relatório técnico** (entregável) |
+| 08 | [`08-apresentacao.md`](08-apresentacao.md) | Roteiro de apresentação (slides) |
+| 09 | [`09-integracao-n8n.md`](09-integracao-n8n.md) | Integração com n8n (desafio extra) |
 
-| # | Documento | Item da entrega |
-|---|-----------|-----------------|
-| 01 | [`01-estudo-dataset-symile-mimic.md`](01-estudo-dataset-symile-mimic.md) | Estudo do Dataset Symile-MIMIC |
-| 02 | [`02-organizacao-modalidades.md`](02-organizacao-modalidades.md) | Organização das Modalidades de Dados |
-| 03 | [`03-leitura-visualizacao.md`](03-leitura-visualizacao.md) | Leitura e Visualização dos Dados |
-| 04 | [`04-arquitetura-solucao.md`](04-arquitetura-solucao.md) | Definição da Arquitetura da Solução |
-| 05 | [`05-analise-tecnologias.md`](05-analise-tecnologias.md) | Análise das Tecnologias |
-
-Itens **6 (Organização do GitHub)** e **7 (Protótipo da Interface)** são atendidos, respectivamente, por este repositório e pela pasta [`../app/`](../app/).
-
-> Cada seção marcada com `> _A preencher pela equipe_` deve ser completada antes da apresentação (7–10 minutos).
+Itens **Organização do GitHub** e **Interface** são atendidos por este
+repositório e pela pasta [`../app/`](../app/).

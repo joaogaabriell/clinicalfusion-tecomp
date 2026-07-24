@@ -10,7 +10,7 @@ Estrutura do arquivo:
     1. CONFIGURACAO      — page_config, logo e icones SVG
     2. ESTILOS           — CSS global (cards, grids e comportamento da sidebar)
     3. DADOS E FIGURAS   — cache das modalidades e geracao do grafico do ECG
-    4. RELATORIO         — placeholder ate a integracao com o LLM (Semana 3)
+    4. RELATORIO         — geracao do relatorio via LLM (LangChain) + extras
     5. SIDEBAR           — logo, selecao do paciente e aviso educacional
     6. TELA INICIAL      — hero, modalidades e fluxo (quando nenhum caso esta selecionado)
     7. TELA DO CASO      — metricas + abas (clinica, RX, ECG, laboratorio, relatorio)
@@ -19,7 +19,6 @@ Estrutura do arquivo:
 
 import base64
 import sys
-import time
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -30,6 +29,14 @@ from matplotlib.ticker import MultipleLocator
 sys.path.insert(0, str(Path(__file__).parent))
 
 import dados
+
+from datetime import datetime  # noqa: E402
+
+from src import config, export_pdf  # noqa: E402
+from src.llm import catalogo, chat as chat_mod, extras, prompt as prompt_mod  # noqa: E402
+
+# Carrega as chaves de API do .env para o ambiente (os clientes leem de os.environ).
+config.carregar_env()
 
 # ---------------------------------------------------------------- 1. CONFIGURACAO
 
@@ -159,76 +166,100 @@ def figura_ecg(pid: str, derivacao: str, altura: float = 3.2):
     return fig
 
 
-# ---------------------------------------------------------------- 4. RELATORIO
+# ---------------------------------------------------------------- 4. RELATORIO (LLM)
 
 
-def montar_relatorio(pid: str, pergunta: str) -> str:
-    """
-    Placeholder do relatório, com a estrutura final já definida.
+def gerar_relatorio(caso, pergunta: str, candidato):
+    """Chama o LLM escolhido (via LangChain) e devolve a RespostaLLM."""
+    cliente = candidato.instanciar()
+    prompt = prompt_mod.montar_prompt(caso, pergunta)
+    return cliente.gerar(prompt)
 
-    As seções de conteúdo ficam vazias de propósito: quem as preenche é o LLM
-    multimodal na Semana 3. O que mostramos agora são as evidências reais do
-    caso, que serão o insumo do prompt — inventar resumo, achados ou hipóteses
-    aqui produziria texto clínico sem nenhuma base nos dados do paciente.
-    """
-    caso = caso_cache(pid)
-    clinicos = caso.dados_clinicos
-    tabela = dados.tabela_laboratorio(caso.laboratorio)
-    extremos = dados.exames_extremos(tabela)
-    positivos = dados.achados_positivos(clinicos)
 
-    demografia = clinicos["demografia"]
-    perfil = (
-        f"{dados.idade_texto(demografia)}, "
-        f"{dados.sexo_extenso(demografia['sexo']).lower()}, "
-        f"admissão por *{dados.texto(clinicos['admissao']['tipo']).lower()}*"
+def erro_amigavel(erro) -> str:
+    """Traduz erros técnicos dos provedores em orientação clara ao usuário."""
+    baixo = str(erro).lower()
+    if any(t in baixo for t in ("credit balance", "too low", "purchase credits")):
+        return (
+            "A conta Anthropic está **sem crédito** (a chave é válida, mas o saldo "
+            "é zero). Compre créditos de API em console.anthropic.com → *Plans & "
+            "Billing* (mín. US$5). Obs.: assinatura do Claude.ai (Pro/Max) **não** "
+            "cobre a API — é cobrança separada."
+        )
+    if any(t in baixo for t in ("resource_exhausted", "quota", " 429")):
+        if "insufficient" in baixo or "billing" in baixo or "plan" in baixo:
+            return (
+                "A conta do provedor está sem crédito/billing ativo. "
+                "Adicione crédito ou use outro provedor."
+            )
+        return (
+            "Cota do provedor esgotada agora. O free-tier do Gemini é ~20 "
+            "requisições/dia **por modelo** — troque para outro modelo no seletor "
+            "(ex.: `gemini-flash-lite`), aguarde o reset diário ou habilite billing."
+        )
+    if any(t in baixo for t in ("503", "unavailable", "overloaded", "high demand")):
+        return "Modelo temporariamente sobrecarregado (503). Tente de novo em alguns segundos."
+    return f"Não consegui responder: {erro}"
+
+
+def registrar_historico(pid: str, pergunta: str, resposta) -> None:
+    """Guarda a geracao no historico da sessao (desafio extra)."""
+    historico = st.session_state.setdefault("historico", [])
+    historico.insert(
+        0,
+        {
+            "hora": datetime.now().strftime("%H:%M:%S"),
+            "paciente": pid,
+            "modelo": resposta.modelo,
+            "pergunta": pergunta,
+            "resumo": (resposta.relatorio.resumo or "")[:120],
+        },
     )
+    del historico[20:]  # mantem apenas as 20 mais recentes
+
+
+def _lista_md(itens, vazio: str = "—") -> str:
+    itens = [str(i).strip() for i in itens if str(i).strip()]
+    return "\n".join(f"- {i}" for i in itens) if itens else vazio
+
+
+def renderizar_relatorio(rel, pergunta: str, rotulo_modelo: str) -> str:
+    """Formata o RelatorioClinico do LLM no layout do RF09."""
+    positivos = rel.positivos()
     radiologicos = (
         ", ".join(positivos) if positivos else "nenhum achado marcado como presente"
     )
-    laboratoriais = (
-        "\n".join(
-            f"- {linha['Exame']}: {linha['Valor']} (percentil {linha['Percentil']:.0f})"
-            for _, linha in extremos.iterrows()
-        )
-        or "- nenhum exame em percentil extremo"
+    aviso = rel.aviso or (
+        "Ferramenta com finalidade exclusivamente educacional. Não constitui "
+        "diagnóstico médico e não substitui a avaliação de um profissional de saúde."
     )
-    procedencia = (
-        "radiografia real"
-        if caso.tem_radiografia_real
-        else "radiografia mock (placeholder)"
-    )
+    return f"""#### Relatório clínico estruturado
 
-    return f"""
-#### Relatório clínico estruturado
+**Pergunta:** _{pergunta}_ · **Modelo:** `{rotulo_modelo}`
 
-**Pergunta:** _{pergunta}_
+**1. Resumo do caso**
 
-> :material/build: **Aguardando a integração com o LLM multimodal (Semana 3).**
-> As seções abaixo já refletem a estrutura definida no RF09. Por ora, exibimos as
-> **evidências reais** que comporão o prompt multimodal — nenhum texto clínico é
-> gerado nesta etapa.
+{rel.resumo or "—"}
 
-**Evidências disponíveis para o prompt**
+**2. Principais achados**
 
-- **Perfil:** {perfil}
-- **Exames laboratoriais medidos:** {int((~caso.laboratorio["ausente"]).sum())} de 50
-- **Achados radiológicos (CheXpert):** {radiologicos}
-- **Modalidades:** {procedencia}, ECG mock, laboratório real, dados clínicos reais
+{_lista_md(rel.achados_principais)}
 
-**Exames em percentil extremo**
+_Achados radiológicos (CheXpert) marcados como presentes: {radiologicos}._
 
-{laboratoriais}
+**3. Hipóteses clínicas (educacionais)**
 
----
+{_lista_md(rel.hipoteses)}
 
-**1. Resumo do caso** · **2. Principais achados** · **3. Hipóteses clínicas (educacionais)** ·
-**4. Justificativa** · **5. Exames complementares sugeridos**
+**4. Justificativa**
 
-_Seções a serem preenchidas pelo LLM multimodal._
+{rel.justificativa or "—"}
 
-> **Aviso:** ferramenta com finalidade **exclusivamente educacional**. **Não constitui
-> diagnóstico médico** e **não substitui a avaliação de um profissional de saúde**.
+**5. Exames complementares sugeridos**
+
+{_lista_md(rel.exames_sugeridos)}
+
+> **Aviso:** {aviso}
 """
 
 
@@ -305,6 +336,19 @@ with st.sidebar:
     )
 
     st.divider()
+
+    # Extra: historico de casos analisados nesta sessao.
+    historico = st.session_state.get("historico", [])
+    if historico:
+        with st.expander(f":material/history: Histórico ({len(historico)})"):
+            for item in historico:
+                st.markdown(
+                    f"**{item['paciente']}** · `{item['modelo']}` · {item['hora']}  \n"
+                    f"_{item['pergunta']}_"
+                )
+                st.caption(item["resumo"] + "…" if item["resumo"] else "")
+        st.divider()
+
     st.warning(
         "Uso **exclusivamente educacional**. Não realiza diagnóstico médico.",
         icon=":material/warning:",
@@ -410,13 +454,23 @@ else:
 
     st.divider()
 
-    aba_clinica, aba_rx, aba_ecg, aba_lab, aba_relatorio = st.tabs(
+    (
+        aba_clinica,
+        aba_rx,
+        aba_ecg,
+        aba_lab,
+        aba_chat,
+        aba_relatorio,
+        aba_comparar,
+    ) = st.tabs(
         [
             ":material/clinical_notes: Dados clínicos",
             ":material/radiology: Radiografia",
             ":material/monitor_heart: ECG",
             ":material/science: Laboratório",
+            ":material/forum: Chat",
             ":material/psychology: Relatório (LLM)",
+            ":material/compare_arrows: Comparar 2 casos",
         ]
     )
 
@@ -483,9 +537,7 @@ else:
 
     with aba_ecg:
         st.warning(
-            "**ECG sintético.** Os sinais de ECG não acompanham o material disponibilizado "
-            "(`ecg_*.npy` ausentes). O traçado abaixo é gerado e serve para validar o fluxo "
-            "da aplicação; o formato é idêntico ao do dado real.",
+            "**ECG sintético.** Os sinais de ECG não acompanham o material disponibilizado ",
             icon=":material/science:",
         )
         col_a, col_b, col_c, col_d = st.columns([2, 1, 1, 1])
@@ -517,43 +569,182 @@ else:
 
     # Aba do relatorio: pergunta em linguagem natural -> etapas de processamento -> texto estruturado.
     # O resultado fica em session_state por paciente para sobreviver aos reruns do Streamlit.
-    with aba_relatorio:
-        st.markdown("#### Pergunte sobre o caso em linguagem natural")
-        with st.form(key=f"form_{selecao}", border=False):
-            pergunta = st.text_area(
-                "Pergunta",
-                placeholder="Ex.: Quais são os principais achados deste caso? As alterações laboratoriais são compatíveis com a radiografia?",
+    # Aba Chat: perguntas e respostas conversacionais sobre o caso (com memoria).
+    with aba_chat:
+        st.markdown("#### Converse sobre o caso")
+        st.caption(
+            "Pergunte algo específico — ex.: *nos exames de sangue, o que está "
+            "elevado?* ou *o que a radiografia sugere?*"
+        )
+        modelos_chat = catalogo.disponiveis(catalogo.CATALOGO)
+        if not modelos_chat:
+            st.warning(
+                "Defina uma chave de API no `.env` para usar o chat.",
+                icon=":material/key_off:",
+            )
+        else:
+            cabec = st.columns([3, 2, 1])
+            chave_chat = cabec[0].selectbox(
+                "Modelo",
+                [m.chave for m in modelos_chat],
+                format_func=lambda c: f"{c} — {catalogo.por_chave(c).modelo}",
+                key="modelo_chat",
                 label_visibility="collapsed",
             )
-            enviado = st.form_submit_button("Gerar relatório", type="primary")
+            usar_img = cabec[1].toggle(
+                "Analisar imagem",
+                value=False,
+                help="Envia a radiografia ao modelo (usa ~1.300 tokens a mais). "
+                "Desligado, o chat usa os achados CheXpert já rotulados.",
+            )
+            hist_key = f"chat_hist_{selecao}"
+            historico = st.session_state.setdefault(hist_key, [])
+            if cabec[2].button(
+                ":material/delete: Limpar", key=f"limpar_{selecao}", width="stretch"
+            ):
+                historico.clear()
 
-        if enviado:
-            if not pergunta.strip():
-                st.error("Digite uma pergunta antes de gerar o relatório.")
-            else:
-                with st.status("Processando o caso...", expanded=True) as status:
-                    st.write("Lendo as quatro modalidades do paciente...")
-                    time.sleep(0.6)
-                    st.write(
-                        "Integrando radiografia, ECG, laboratório e dados clínicos..."
-                    )
-                    time.sleep(0.6)
-                    st.write("Construindo o prompt multimodal...")
-                    time.sleep(0.6)
-                    st.write("Consultando o LLM multimodal...")
-                    time.sleep(0.8)
-                    status.update(
-                        label="Relatório gerado", state="complete", expanded=False
-                    )
-                st.session_state[f"rel_{selecao}"] = montar_relatorio(
-                    selecao, pergunta.strip()
+            for msg in historico:
+                with st.chat_message(msg["role"]):
+                    st.markdown(msg["content"])
+                    if msg.get("tokens"):
+                        st.caption(msg["tokens"])
+
+            pergunta_chat = st.chat_input("Pergunte sobre este caso...")
+            if pergunta_chat:
+                with st.chat_message("user"):
+                    st.markdown(pergunta_chat)
+                legenda = ""
+                with st.chat_message("assistant"):
+                    with st.spinner("Analisando o caso..."):
+                        try:
+                            resposta_chat, tin, tout = chat_mod.responder(
+                                catalogo.por_chave(chave_chat),
+                                caso,
+                                list(historico),
+                                pergunta_chat,
+                                usar_imagem=usar_img,
+                            )
+                            legenda = f"tokens entrada/saída {tin or 0}/{tout or 0}"
+                        except Exception as exc:  # noqa: BLE001
+                            resposta_chat = erro_amigavel(exc)
+                    st.markdown(resposta_chat)
+                    if legenda:
+                        st.caption(legenda)
+                historico.append({"role": "user", "content": pergunta_chat})
+                historico.append(
+                    {"role": "assistant", "content": resposta_chat, "tokens": legenda}
                 )
 
-        relatorio = st.session_state.get(f"rel_{selecao}")
-        if relatorio:
+    with aba_relatorio:
+        st.markdown("#### Pergunte sobre o caso em linguagem natural")
+
+        modelos_disp = catalogo.disponiveis(catalogo.CATALOGO)
+        if not modelos_disp:
+            st.warning(
+                "Nenhum modelo de LLM disponível. Defina ao menos uma chave de API no "
+                "`.env` (`OPENAI_API_KEY`, `GOOGLE_API_KEY` ou `ANTHROPIC_API_KEY`) "
+                "e recarregue a página.",
+                icon=":material/key_off:",
+            )
+        else:
+            modelo_chave = st.selectbox(
+                "Modelo",
+                [m.chave for m in modelos_disp],
+                format_func=lambda c: f"{c} — {catalogo.por_chave(c).modelo}",
+            )
+            with st.form(key=f"form_{selecao}", border=False):
+                pergunta = st.text_area(
+                    "Pergunta",
+                    placeholder="Ex.: Quais são os principais achados deste caso? As alterações laboratoriais são compatíveis com a radiografia?",
+                    label_visibility="collapsed",
+                )
+                enviado = st.form_submit_button("Gerar relatório", type="primary")
+
+            if enviado:
+                if not pergunta.strip():
+                    st.error("Digite uma pergunta antes de gerar o relatório.")
+                else:
+                    candidato = catalogo.por_chave(modelo_chave)
+                    with st.status("Processando o caso...", expanded=True) as status:
+                        st.write(
+                            "Integrando radiografia, ECG, laboratório e dados clínicos..."
+                        )
+                        st.write(
+                            f"Construindo o prompt multimodal e consultando `{candidato.modelo}`..."
+                        )
+                        resposta = gerar_relatorio(caso, pergunta.strip(), candidato)
+                        status.update(
+                            label="Relatório gerado" if resposta.ok else "Falha na geração",
+                            state="complete" if resposta.ok else "error",
+                            expanded=False,
+                        )
+                    st.session_state[f"rel_{selecao}"] = (
+                        pergunta.strip(),
+                        resposta,
+                        modelo_chave,
+                    )
+                    st.session_state.pop(f"pac_{selecao}", None)  # limpa versao antiga
+                    if resposta.ok:
+                        registrar_historico(selecao, pergunta.strip(), resposta)
+
+        guardado = st.session_state.get(f"rel_{selecao}")
+        if guardado and not guardado[1].ok:
+            st.error(erro_amigavel(guardado[1].erro), icon=":material/error:")
+        elif guardado:
+            pergunta_feita, resposta, chave_usada = guardado
+            candidato_usado = catalogo.por_chave(chave_usada)
+            rotulo = f"{resposta.provedor}/{resposta.modelo}"
             col_rel, col_evidencias = st.columns([3, 2])
             with col_rel:
-                st.markdown(relatorio)
+                st.markdown(
+                    renderizar_relatorio(resposta.relatorio, pergunta_feita, rotulo)
+                )
+                # RF/extra: painel de desempenho — latência, tokens e custo estimado.
+                custo = candidato_usado.custo_usd(
+                    resposta.tokens_entrada, resposta.tokens_saida
+                )
+                mcol = st.columns(3)
+                mcol[0].metric("Latência", f"{resposta.latencia_s:.1f} s")
+                mcol[1].metric(
+                    "Tokens (ent/saí)",
+                    f"{resposta.tokens_entrada or 0}/{resposta.tokens_saida or 0}",
+                )
+                mcol[2].metric("Custo estimado", f"US$ {custo:.4f}")
+
+                # Extras: versão para o paciente e exportação em PDF.
+                versao_pac = st.session_state.get(f"pac_{selecao}")
+                b_pac, b_pdf = st.columns(2)
+                if b_pac.button(
+                    ":material/volunteer_activism: Explicar para o paciente",
+                    key=f"btn_pac_{selecao}",
+                    width="stretch",
+                ):
+                    with st.spinner("Traduzindo para linguagem simples..."):
+                        try:
+                            versao_pac = extras.explicar_para_paciente(
+                                candidato_usado, resposta.relatorio
+                            )
+                            st.session_state[f"pac_{selecao}"] = versao_pac
+                        except Exception as exc:  # noqa: BLE001
+                            st.error(f"Falha ao traduzir: {exc}")
+
+                pdf_bytes = export_pdf.relatorio_para_pdf(
+                    selecao, pergunta_feita, resposta.modelo, resposta.relatorio,
+                    versao_paciente=versao_pac,
+                )
+                b_pdf.download_button(
+                    ":material/picture_as_pdf: Baixar PDF",
+                    data=pdf_bytes,
+                    file_name=f"relatorio_{selecao}.pdf",
+                    mime="application/pdf",
+                    width="stretch",
+                )
+
+                if versao_pac:
+                    with st.container(border=True):
+                        st.markdown("##### :material/volunteer_activism: Para o paciente")
+                        st.write(versao_pac)
             with col_evidencias:
                 # RF10: as modalidades que sustentam a resposta ficam visíveis ao lado dela.
                 st.markdown("#### Exames utilizados na resposta")
@@ -576,6 +767,62 @@ else:
             st.caption(
                 "O relatório estruturado aparecerá aqui após o envio de uma pergunta."
             )
+
+    # Extra: comparacao entre dois casos clinicos lado a lado.
+    with aba_comparar:
+        st.markdown("#### Compare este caso com outro")
+        modelos_cmp = catalogo.disponiveis(catalogo.CATALOGO)
+        if not modelos_cmp:
+            st.warning(
+                "Defina uma chave de API no `.env` para usar a comparação.",
+                icon=":material/key_off:",
+            )
+        else:
+            outros = [p for p in INDICE["paciente_id"] if p != selecao]
+            c1, c2 = st.columns(2)
+            outro = c1.selectbox(
+                "Segundo caso",
+                outros,
+                format_func=lambda pid: dados.rotulo_paciente(pid, INDICE),
+            )
+            chave_cmp = c2.selectbox(
+                "Modelo",
+                [m.chave for m in modelos_cmp],
+                format_func=lambda c: f"{c} — {catalogo.por_chave(c).modelo}",
+                key="modelo_cmp",
+            )
+            pergunta_cmp = st.text_input(
+                "Pergunta aplicada aos dois casos",
+                value="Quais são os principais achados e as hipóteses deste caso?",
+            )
+            if st.button(":material/compare_arrows: Comparar", type="primary"):
+                candidato = catalogo.por_chave(chave_cmp)
+                pares = [(selecao, caso), (outro, caso_cache(outro))]
+                resultados = []
+                with st.status("Gerando os dois relatórios...", expanded=False):
+                    for pid, c in pares:
+                        resultados.append((pid, gerar_relatorio(c, pergunta_cmp.strip(), candidato)))
+                st.session_state[f"cmp_{selecao}"] = (chave_cmp, resultados)
+
+            comparacao = st.session_state.get(f"cmp_{selecao}")
+            if comparacao:
+                chave_usada_cmp, resultados = comparacao
+                cand_cmp = catalogo.por_chave(chave_usada_cmp)
+                cols = st.columns(2)
+                for coluna, (pid, resp) in zip(cols, resultados):
+                    with coluna:
+                        st.markdown(f"##### `{pid}`")
+                        if not resp.ok:
+                            st.error(f"Falha: {resp.erro}", icon=":material/error:")
+                            continue
+                        rel = resp.relatorio
+                        st.image(caso_cache(pid).radiografia, width="stretch")
+                        st.markdown(f"**Resumo:** {rel.resumo or '—'}")
+                        st.markdown("**Achados:** " + (", ".join(rel.positivos()) or "—"))
+                        st.markdown("**Hipóteses:**")
+                        st.markdown(_lista_md(rel.hipoteses))
+                        custo = cand_cmp.custo_usd(resp.tokens_entrada, resp.tokens_saida)
+                        st.caption(f"{resp.latencia_s:.1f}s · US$ {custo:.4f}")
 
 
 # ---------------------------------------------------------------- 8. SCRIPT DA SIDEBAR
