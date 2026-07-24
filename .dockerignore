@@ -1,0 +1,13 @@
+# Contexto de build do n8n.Dockerfile: só precisamos do requirements.txt.
+# O código e o .env entram em tempo de execução via bind mount (ver docker-compose.n8n.yml).
+.venv/
+.git/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+data/
+benchmark_resultados/
+notebooks/
+.vscode/
+*.md
