@@ -40,13 +40,17 @@ def url_webhook() -> str | None:
 
 def enviar_relatorio(
     paciente_id: str,
-    pergunta: str,
+    pergunta: str | None,
     modelo: str,
     pdf_bytes: bytes,
     timeout: float = 20.0,
 ) -> str:
     """
     Entrega o PDF ao workflow do n8n.
+
+    `pergunta` e opcional -- a interface gera o relatorio completo sem pergunta
+    digitada. A chave continua sempre no JSON (string vazia quando nao ha) para
+    nao quebrar expressoes ja escritas no workflow.
 
     Returns:
         O nome do arquivo enviado.
@@ -64,7 +68,7 @@ def enviar_relatorio(
     corpo = json.dumps(
         {
             "paciente": paciente_id,
-            "pergunta": pergunta,
+            "pergunta": (pergunta or "").strip(),
             "modelo": modelo,
             "arquivo": nome,
             "pdf_base64": base64.standard_b64encode(pdf_bytes).decode("ascii"),

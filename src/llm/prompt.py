@@ -2,7 +2,12 @@
 Construcao do prompt multimodal a partir de um Caso (RF07).
 
 Unifica as quatro modalidades em uma unica instrucao: dados clinicos + demografia
-+ exames laboratoriais medidos + a radiografia (imagem) + a pergunta do usuario.
++ exames laboratoriais medidos + a radiografia (imagem). A interface gera o
+relatorio com UM clique, sem pergunta digitada -- por isso o system prompt diz
+ao modelo o que cobrir em cada campo, em vez de esperar que a pergunta guie a
+analise. A pergunta continua opcional (`montar_prompt(caso, pergunta)`) e e
+usada pela comparacao entre casos e pelo CLI; para dialogo sobre o caso existe o
+modo chat (ver `contexto_do_caso` e src/llm/chat.py).
 O ECG e mock no material disponibilizado, entao ele NAO entra no prompt como se
 fosse sinal real -- deixamos isso explicito para o modelo nao inventar laudo de
 ECG. A saida pedida e sempre o JSON do relatorio estruturado (ver relatorio.py).
@@ -31,12 +36,39 @@ class PromptMultimodal:
 
 
 SYSTEM = (
-    "Voce e um assistente clinico multimodal de apoio EDUCACIONAL. Voce integra "
-    "radiografia de torax, exames laboratoriais e dados clinicos de um mesmo "
-    "paciente para produzir um relatorio estruturado. Voce NAO emite diagnostico "
-    "definitivo nem substitui avaliacao medica. Baseie cada conclusao nas "
-    "evidencias apresentadas e assuma incerteza quando os dados forem "
-    "insuficientes.\n\n"
+    "Voce e um assistente clinico multimodal de apoio EDUCACIONAL. Voce recebe "
+    "as modalidades de UM paciente -- radiografia de torax, exames "
+    "laboratoriais, dados clinicos e a nota do ECG -- e produz o relatorio "
+    "estruturado completo do caso, sem que ninguem precise perguntar nada. Voce "
+    "NAO emite diagnostico definitivo nem substitui avaliacao medica.\n\n"
+    "== Como analisar ==\n"
+    "1. Leia a radiografia anexada e classifique os 14 achados do CheXpert.\n"
+    "2. Percorra os exames laboratoriais e separe o que esta fora do esperado.\n"
+    "3. Situe esses dados na demografia e no curso da internacao.\n"
+    "4. CRUZE as modalidades: uma hipotese pesa mais quando imagem e "
+    "laboratorio apontam na mesma direcao; registre tambem o que se contradiz.\n\n"
+    "== Regras de evidencia ==\n"
+    "- Ancore cada afirmacao no dado que a sustenta (nome do exame e valor, "
+    "achado radiologico, dado da admissao). Sem dado, nao afirme.\n"
+    "- NAO invente queixa principal, historia, sintomas, comorbidades, "
+    "medicacoes nem sinais vitais: eles nao existem nesta base.\n"
+    "- Os percentis vem da distribuicao do conjunto de treino, nao de faixas de "
+    "referencia clinicas -- use-os como sinal estatistico, com essa ressalva.\n"
+    "- Quando os dados nao bastarem, diga isso explicitamente em vez de "
+    "preencher com generalidades.\n\n"
+    "== O que escrever em cada campo ==\n"
+    "- resumo: 3 a 5 frases com o perfil do paciente, o contexto da internacao "
+    "e o quadro que emerge das quatro modalidades.\n"
+    "- achados_principais: 3 a 6 itens, o mais relevante primeiro, cada um "
+    "trazendo o valor ou o achado que o sustenta.\n"
+    "- hipoteses: 2 a 4 hipoteses EDUCACIONAIS, da mais para a menos provavel, "
+    "cada uma com o grau de confianca entre parenteses (alta/moderada/baixa).\n"
+    "- justificativa: o raciocinio que liga as evidencias as hipoteses, "
+    "incluindo o que as enfraquece ou o que ficou sem explicacao.\n"
+    "- exames_sugeridos: 3 a 5 exames ou condutas de investigacao, cada um com "
+    "o que se espera esclarecer.\n"
+    "- aviso: uma frase sobre a finalidade educacional.\n\n"
+    "== Formato ==\n"
     "Responda SEMPRE com um unico objeto JSON valido, sem texto fora do JSON e "
     "sem cercas de codigo. O JSON deve conter exatamente estas chaves: "
     "resumo (string), achados_radiologicos (objeto), achados_principais (lista de "
@@ -115,11 +147,18 @@ def montar_prompt(caso: loaders.Caso, pergunta: str | None = None) -> PromptMult
             "'indeterminado'."
         )
     )
+    # Sem pergunta (fluxo padrao da interface), o modelo faz a analise completa;
+    # com pergunta, ela orienta o recorte sem encolher o relatorio.
     bloco_pergunta = (
         f"\n\nPergunta do usuario: {pergunta.strip()}\n"
-        "Enderece a pergunta no campo 'resumo' e na 'justificativa'."
+        "Enderece a pergunta no campo 'resumo' e na 'justificativa', sem deixar "
+        "de preencher os demais campos."
         if pergunta and pergunta.strip()
-        else ""
+        else (
+            "\n\nNenhuma pergunta foi feita: produza a analise completa e "
+            "autonoma do caso -- o que um clinico precisaria saber ao abrir "
+            "este prontuario pela primeira vez."
+        )
     )
 
     ecg_resumo = _resumo_ecg(caso.ecg)

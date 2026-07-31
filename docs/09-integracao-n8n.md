@@ -13,9 +13,12 @@ no stdout, com código de saída `0` (sucesso) ou `1` (falha):
 ```bash
 python -m src.gerar_relatorio \
   --paciente patient_0001 \
-  --pergunta "Quais os principais achados deste caso?" \
   --modelo gemini-flash-lite
 ```
+
+> `--pergunta` é **opcional**: sem ela o modelo produz a análise completa do caso —
+> o mesmo fluxo da interface, onde o relatório sai com um clique. Passe uma
+> pergunta apenas quando quiser orientar o recorte da análise.
 
 > Sem chave de API válida, use `--modelo demo`: devolve um relatório **simulado**
 > (marcado com `[SIMULADO]`, sem chamar API) para demonstrar o fluxo do n8n de

@@ -72,6 +72,25 @@ def test_prompt_inclui_pergunta_do_usuario():
     assert "pneumonia" in p.texto.lower()
 
 
+def test_prompt_sem_pergunta_pede_analise_completa():
+    """Fluxo padrao da interface: um clique, sem caixa de texto."""
+
+    class CasoFake:
+        radiografia = Image.new("RGB", (320, 320))
+        laboratorio = _lab_vazio()
+        ecg = _ecg_vazio()
+        dados_clinicos = {"demografia": {}, "admissao": {}, "radiografia": {}}
+        tem_radiografia_real = True
+
+    p = prompt_mod.montar_prompt(CasoFake())
+
+    assert "Pergunta do usuario" not in p.texto
+    assert "analise completa" in p.texto.lower()
+    # O system prompt e quem passa a guiar o conteudo de cada campo.
+    for campo in ("resumo", "achados_principais", "hipoteses", "exames_sugeridos"):
+        assert campo in p.system
+
+
 def test_imagem_para_base64_roundtrip():
     original = Image.new("RGB", (8, 8), (200, 100, 50))
     b64 = base.ClienteLLM.imagem_para_base64(original)

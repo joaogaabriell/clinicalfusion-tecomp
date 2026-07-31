@@ -6,10 +6,12 @@ Reusa gerar_relatorio.gerar() para nao duplicar a chamada ao LLM. Pensado para
 automacao (ex.: n8n via "Execute Command") como alternativa a gerar_relatorio
 quando o destino final e um arquivo PDF (ex.: upload para Google Drive).
 
+A pergunta e OPCIONAL, como em gerar_relatorio: sem ela o modelo faz a analise
+completa do caso.
+
 Uso:
     python -m src.exportar_pdf --paciente patient_0001 \
-        --pergunta "Quais os principais achados?" --modelo gemini-flash-lite \
-        --saida /tmp/relatorio.pdf
+        --modelo gemini-flash-lite --saida /tmp/relatorio.pdf
 """
 
 import argparse
@@ -27,7 +29,11 @@ def main() -> None:
         description="Gera o relatorio clinico de um caso e exporta em PDF."
     )
     parser.add_argument("--paciente", required=True, help="Ex.: patient_0001")
-    parser.add_argument("--pergunta", required=True)
+    parser.add_argument(
+        "--pergunta",
+        default=None,
+        help="Opcional: orienta o recorte. Sem ela, analise completa do caso.",
+    )
     parser.add_argument(
         "--modelo",
         default=catalogo.CHAVES_PADRAO[0],

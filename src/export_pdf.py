@@ -31,7 +31,7 @@ def _latin1(texto: str) -> str:
 
 def relatorio_para_pdf(
     paciente_id: str,
-    pergunta: str,
+    pergunta: str | None,
     modelo: str,
     relatorio: RelatorioClinico,
     versao_paciente: str | None = None,
@@ -69,7 +69,10 @@ def relatorio_para_pdf(
     titulo("ClinicalFusion - Relatorio clinico estruturado", 15)
     pdf.set_font("Helvetica", "", 10)
     celula(f"Caso: {paciente_id}   |   Modelo: {modelo}", 5)
-    celula(f"Pergunta: {pergunta}", 5)
+    # A interface gera o relatorio sem pergunta digitada; a linha so aparece
+    # quando alguem passou uma (comparacao entre casos, CLI).
+    if pergunta and pergunta.strip():
+        celula(f"Pergunta: {pergunta.strip()}", 5)
     pdf.ln(3)
 
     titulo("1. Resumo do caso")
