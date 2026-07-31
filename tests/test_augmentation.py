@@ -1,12 +1,14 @@
 """Testes da augmentation das radiografias reais."""
 
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 
-from src import augmentation, build_subset, config, loaders, mock
+from src import augmentation, build_subset, config, mock
 
 
-def _subset_com_cxr_real(tmp_path, caso_bruto, caso_clinico) -> "Path":
+def _subset_com_cxr_real(tmp_path, caso_bruto, caso_clinico) -> Path:
     """Monta um subconjunto minimo com uma radiografia marcada como real."""
     imagem = mock.gerar_cxr_placeholder("patient_0001")  # so precisa de uma imagem
     linha = build_subset._escrever_paciente(

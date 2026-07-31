@@ -13,7 +13,6 @@ chaves e, quando elas chegarem no .env, e so rodar de novo.
 
 import dataclasses
 import json
-import time
 from datetime import datetime, timezone
 from pathlib import Path
 

@@ -1,0 +1,106 @@
+# CI do ClinicalFusion.
+#
+# O que roda aqui NAO depende do Symile-MIMIC: o dataset e credenciado e a DUA
+# proibe redistribui-lo, entao ele nunca chega ao runner. Os testes montam um
+# subconjunto ficticio em tmp_path (ver tests/conftest.py) -- por isso a suite
+# roda inteira num ambiente limpo.
+#
+# Nenhuma etapa chama a API do Gemini: sem GOOGLE_API_KEY o catalogo marca os
+# modelos como indisponiveis e os testes usam clientes falsos. O CI e de graca e
+# nao consome cota.
+
+name: CI
+
+on:
+  push:
+    branches: [main, develop, "feature/**"]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+# Um push novo na mesma branch cancela a execucao anterior.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  testes:
+    name: Testes (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 3.10 e o minimo declarado em requirements.txt; 3.12 e a versao usada
+        # no desenvolvimento. As duas pontas precisam continuar funcionando.
+        python-version: ["3.10", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Rodar a suite
+        run: python -m pytest -q
+
+  qualidade:
+    name: Qualidade e checagens do repositorio
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt ruff
+
+      # Conjunto deliberadamente estreito: erros de verdade (sintaxe, nome
+      # indefinido, import/variavel sem uso), nao estilo. Formatacao fica a
+      # criterio de quem escreve; o CI so barra o que quebraria em execucao.
+      - name: Lint (ruff)
+        run: ruff check --select E9,F63,F7,F82,F401,F841 .
+
+      - name: Compilar interface e pacote
+        run: python -m compileall -q app src
+
+      # A licenca do Symile-MIMIC proibe redistribuir os dados. Um `git add -A`
+      # distraido em data/ vazaria o dataset no repositorio publico -- este
+      # passo transforma isso em falha de CI, nao em problema juridico.
+      - name: Nenhum dado do Symile-MIMIC versionado
+        run: |
+          vazados=$(git ls-files data/ | grep -vE '^data/(README\.md|\.gitignore)$' || true)
+          if [ -n "$vazados" ]; then
+            echo "Arquivos de dados versionados em data/ (a DUA proibe):"
+            echo "$vazados"
+            exit 1
+          fi
+          echo "OK: apenas a documentacao de data/ esta versionada."
+
+      - name: Nenhuma chave de API no repositorio
+        run: |
+          if git ls-files | grep -qE '(^|/)\.env$'; then
+            echo "O arquivo .env foi versionado -- ele guarda as chaves."
+            exit 1
+          fi
+          if git grep -nIE 'AIza[0-9A-Za-z_-]{30,}|sk-[A-Za-z0-9]{32,}' \
+              -- . ':(exclude).github/workflows/ci.yml'; then
+            echo "Padrao de chave de API encontrado no codigo."
+            exit 1
+          fi
+          echo "OK: nenhuma chave versionada."
+
+      - name: Validar o compose do n8n
+        run: docker compose -f docker-compose.n8n.yml config -q

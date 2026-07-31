@@ -2,6 +2,8 @@
 
 **Assistente Inteligente Multimodal para Análise Integrada de Casos Clínicos utilizando LLMs Multimodais**
 
+[![CI](https://github.com/joaogaabriell/clinicalfusion-tecomp/actions/workflows/ci.yml/badge.svg)](https://github.com/joaogaabriell/clinicalfusion-tecomp/actions/workflows/ci.yml)
+
 
 ## 📌 Sobre o projeto
 
@@ -148,6 +150,8 @@ Isso adiciona o modelo `demo` ao seletor. O conteúdo é um texto fixo do [`src/
 ```bash
 python -m pytest tests
 ```
+
+**Integração contínua:** todo push em `main`, `develop` e `feature/*` (e todo PR para `main`/`develop`) dispara o workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml), que roda a suíte em Python 3.10 e 3.12, passa o `ruff` nos erros que quebram execução, valida o `docker-compose.n8n.yml` e confere que **nenhum dado do Symile-MIMIC nem chave de API** foi versionado. O CI não consome cota da API: sem `GOOGLE_API_KEY`, os testes usam clientes falsos.
 
 ---
 
