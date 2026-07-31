@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from typing import Callable
 
 from .base import ClienteLLM
+from .demo_client import ClienteDemonstracao
 from .langchain_client import ClienteLangChain
 
 
@@ -23,11 +24,17 @@ def _fabrica(provedor: str) -> Callable[[str], ClienteLLM]:
     return lambda modelo: ClienteLangChain(provedor, modelo)
 
 # Variaveis de ambiente esperadas por provedor.
-# O projeto usa apenas o Gemini (decisao da equipe). O cliente LangChain
-# (langchain_client.py) continua suportando openai e anthropic -- para reativar,
-# basta readicionar as linhas abaixo e as entradas correspondentes no CATALOGO.
+# O projeto usa apenas o Gemini (decisao da equipe). Os ramos de openai e
+# anthropic tambem foram removidos do cliente LangChain -- para reativar um
+# deles, ver as instrucoes no topo de langchain_client.py.
+#
+# O provedor "demo" nao consome API: `CLINICALFUSION_DEMO` funciona como um
+# interruptor, reaproveitando a regra que ja existe aqui (modelo so aparece
+# quando a sua variavel esta definida). Sem a variavel, o modo demonstracao nao
+# aparece em lugar nenhum -- nem na interface, nem no benchmark.
 ENV_POR_PROVEDOR = {
     "google": "GOOGLE_API_KEY",
+    "demo": "CLINICALFUSION_DEMO",
     # "openai": "OPENAI_API_KEY",
     # "anthropic": "ANTHROPIC_API_KEY",
 }
@@ -68,29 +75,43 @@ class ModeloCandidato:
 # --- Catalogo -------------------------------------------------------------
 # Um representante forte por provedor + variantes de custo para comparar.
 
-# A equipe decidiu usar apenas o Gemini (Google). IMPORTANTE: cada modelo tem
-# quota FREE-TIER SEPARADA (ex.: gemini-3.5-flash = 20 req/dia). Se um esgotar
-# (429), troque de modelo no seletor. Os "-lite" costumam ter free-tier maior.
+# A equipe decidiu usar apenas o Gemini (Google).
+#
+# Verificado em 2026-07-31: com a chave/projeto atual (conta pre-paga, com
+# creditos) o gemini-3.5-flash responde normalmente. Antes disso a conta passou
+# por dois estados que valem como diagnostico se o erro voltar:
+#   - 403 PERMISSION_DENIED  -> o PROJETO da chave esta bloqueado para o modelo;
+#     trocar de modelo nao adianta, precisa de chave em outro projeto.
+#   - 429 "prepayment credits are depleted" -> chave e projeto ok, faltam
+#     creditos; comprar em https://ai.studio/projects.
+#   - 404 "no longer available" -> o Google APOSENTOU o modelo. Foi o que
+#     aconteceu com gemini-2.0-flash e gemini-2.0-flash-lite, que estavam aqui:
+#     enquanto faltavam creditos o 429 vinha antes e escondia o 404. Trocar o
+#     id do modelo por um da geracao atual.
+# Refazer essa verificacao ao trocar de chave. Todos os ids abaixo foram
+# testados com uma chamada real em 2026-07-31.
 CATALOGO: list[ModeloCandidato] = [
     ModeloCandidato(
         "gemini-flash", "google", "gemini-3.5-flash", _fabrica("google"),
-        "Melhor qualidade flash (free-tier: 20 req/dia).",
+        "Melhor qualidade flash -- padrao do projeto.",
         preco_entrada=0.30, preco_saida=2.50,
     ),
     ModeloCandidato(
-        "gemini-flash-lite", "google", "gemini-2.0-flash-lite", _fabrica("google"),
-        "Free-tier alto -- melhor p/ testar bastante.",
+        "gemini-flash-lite", "google", "gemini-3.5-flash-lite", _fabrica("google"),
+        "Mais barato -- p/ testar bastante. Precos a confirmar.",
         preco_entrada=0.075, preco_saida=0.30,
     ),
     ModeloCandidato(
-        "gemini-2-flash", "google", "gemini-2.0-flash", _fabrica("google"),
-        "Alternativa com quota propria.",
-        preco_entrada=0.10, preco_saida=0.40,
-    ),
-    ModeloCandidato(
         "gemini-pro", "google", "gemini-pro-latest", _fabrica("google"),
-        "Topo de linha do Google (exige quota; free-tier pode dar 429).",
+        "Topo de linha do Google.",
         preco_entrada=1.25, preco_saida=10.0,
+    ),
+    # NAO e um modelo: devolve um relatorio fixo, marcado como "[SIMULADO]", para
+    # apresentar a interface sem chave de API (ver src/llm/demo_client.py). Fica
+    # fora de CHAVES_PADRAO de proposito -- nao deve entrar em benchmark.
+    ModeloCandidato(
+        "demo", "demo", "relatorio-simulado", lambda modelo: ClienteDemonstracao(modelo),
+        "SIMULADO -- nao chama API, so para demonstrar a interface.",
     ),
 ]
 

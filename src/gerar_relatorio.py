@@ -7,7 +7,7 @@ paciente, a pergunta e o modelo, e devolve o relatorio estruturado + telemetria.
 
 Uso:
     python -m src.gerar_relatorio --paciente patient_0001 \
-        --pergunta "Quais os principais achados?" --modelo gemini-flash
+        --pergunta "Quais os principais achados?" --modelo gemini-flash-lite
 """
 
 import argparse

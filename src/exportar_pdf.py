@@ -8,7 +8,7 @@ quando o destino final e um arquivo PDF (ex.: upload para Google Drive).
 
 Uso:
     python -m src.exportar_pdf --paciente patient_0001 \
-        --pergunta "Quais os principais achados?" --modelo gemini-flash \
+        --pergunta "Quais os principais achados?" --modelo gemini-flash-lite \
         --saida /tmp/relatorio.pdf
 """
 

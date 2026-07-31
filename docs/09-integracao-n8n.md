@@ -14,15 +14,20 @@ no stdout, com código de saída `0` (sucesso) ou `1` (falha):
 python -m src.gerar_relatorio \
   --paciente patient_0001 \
   --pergunta "Quais os principais achados deste caso?" \
-  --modelo gemini-flash
+  --modelo gemini-flash-lite
 ```
+
+> Sem chave de API válida, use `--modelo demo`: devolve um relatório **simulado**
+> (marcado com `[SIMULADO]`, sem chamar API) para demonstrar o fluxo do n8n de
+> ponta a ponta. Exige `CLINICALFUSION_DEMO=1` — já definida no
+> `docker-compose.n8n.yml`.
 
 Saída (resumida):
 
 ```json
 {
   "paciente": "patient_0001",
-  "modelo": "gemini-3.5-flash",
+  "modelo": "gemini-2.0-flash-lite",
   "ok": true,
   "latencia_s": 14.2,
   "tokens_entrada": 2295,
@@ -51,6 +56,36 @@ Passos:
 3. **Parse JSON** — o stdout já é JSON; use um nó `Set`/`Code` para extrair `relatorio.resumo`, `custo_usd`, etc.
 4. **Arquivar** — grave o JSON (ou um PDF gerado) em Google Drive, Notion, banco ou disco. Para PDF, um segundo `Execute Command` pode chamar um script que use `src/export_pdf.py`.
 5. **Notificar** — envie o resumo por Slack/e-mail; trate `ok=false` como alerta.
+
+## Arquivamento automático a partir da interface
+
+Além do fluxo acima (disparado à mão no n8n), a interface arquiva sozinha: ao gerar um
+relatório, ela manda o PDF pronto para um segundo workflow, que só faz o upload.
+
+```
+[Streamlit]  ──POST──▶  [Webhook]  →  [Code]  →  [Google Drive]
+ gera e paga             /webhook/     base64      pasta
+ a inferência            relatorio-    → binário    "ClinicalFusion - Relatorios"
+                         clinico
+```
+
+**Por que o PDF vai pronto, em vez de o n8n rodar o CLI:** o relatório já foi gerado (e
+pago) na interface. Se o workflow chamasse o LLM de novo, seriam duas cobranças e dois
+textos possivelmente diferentes — o arquivo no Drive não seria o mesmo que está na tela.
+
+Para ligar:
+
+1. No n8n, deixe o workflow **"App → Google Drive (webhook)" ativo** (chave *Active*). A URL
+   de produção (`/webhook/...`) só responde com o workflow ativo — se estiver inativo, o
+   `POST` volta `404`, e é isso que a interface reporta.
+2. No `.env`, defina:
+   ```
+   CLINICALFUSION_N8N_WEBHOOK=http://localhost:5678/webhook/relatorio-clinico
+   ```
+
+Sem essa variável a interface funciona igual, apenas sem arquivar. O envio nunca derruba a
+geração: se o n8n estiver fora do ar, o relatório aparece normalmente e a tela mostra um
+aviso de que não foi arquivado (`src/n8n.py` e `arquivar_no_drive` em `app/streamlit_app.py`).
 
 ## Observações
 

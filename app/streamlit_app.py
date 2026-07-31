@@ -32,7 +32,7 @@ import dados
 
 from datetime import datetime  # noqa: E402
 
-from src import config, export_pdf  # noqa: E402
+from src import config, export_pdf, n8n  # noqa: E402
 from src.llm import catalogo, chat as chat_mod, extras, prompt as prompt_mod  # noqa: E402
 
 # Carrega as chaves de API do .env para o ambiente (os clientes leem de os.environ).
@@ -176,15 +176,59 @@ def gerar_relatorio(caso, pergunta: str, candidato):
     return cliente.gerar(prompt)
 
 
+def arquivar_no_drive(paciente_id: str, pergunta: str, resposta):
+    """
+    Manda o PDF recem-gerado ao workflow do n8n, que arquiva no Google Drive.
+
+    O PDF vai pronto (o n8n nao refaz a inferencia): o arquivo no Drive e
+    exatamente o mesmo relatorio que esta na tela, sem uma segunda chamada paga.
+
+    Falhar aqui nao pode custar o relatorio ao usuario -- ele ja foi gerado e
+    pago. Por isso devolve o erro como texto em vez de propagar.
+
+    Returns:
+        (sucesso: bool, mensagem: str).
+    """
+    try:
+        pdf = export_pdf.relatorio_para_pdf(
+            paciente_id, pergunta, resposta.modelo, resposta.relatorio
+        )
+        nome = n8n.enviar_relatorio(paciente_id, pergunta, resposta.modelo, pdf)
+        return True, nome
+    except n8n.ErroN8N as exc:
+        return False, str(exc)
+    except Exception as exc:  # noqa: BLE001 - arquivamento nunca derruba a geracao
+        return False, f"Falha inesperada ao arquivar: {exc}"
+
+
+def avisar_se_demonstracao(chave: str) -> None:
+    """
+    Deixa explicito na tela quando a resposta vem do cliente simulado.
+
+    O texto do relatorio ja vem marcado com "[SIMULADO]", mas numa apresentacao
+    quem assiste ve a tela de longe: o banner evita que o conteudo de exemplo
+    passe por analise real.
+    """
+    if chave == "demo":
+        st.warning(
+            "**Modo demonstração.** A resposta é um texto fixo do cliente "
+            "simulado (`src/llm/demo_client.py`) — nenhum modelo é consultado, e "
+            "os achados radiológicos **não** correspondem à imagem.",
+            icon=":material/science:",
+        )
+
+
 def erro_amigavel(erro) -> str:
-    """Traduz erros técnicos dos provedores em orientação clara ao usuário."""
+    """Traduz erros técnicos do provedor em orientação clara ao usuário."""
     baixo = str(erro).lower()
-    if any(t in baixo for t in ("credit balance", "too low", "purchase credits")):
+    if "permission_denied" in baixo or "denied access" in baixo:
         return (
-            "A conta Anthropic está **sem crédito** (a chave é válida, mas o saldo "
-            "é zero). Compre créditos de API em console.anthropic.com → *Plans & "
-            "Billing* (mín. US$5). Obs.: assinatura do Claude.ai (Pro/Max) **não** "
-            "cobre a API — é cobrança separada."
+            "O **projeto do Google** ligado a esta chave está bloqueado (403 "
+            "`PERMISSION_DENIED`) — não é falta de cota. A chave em si pode ser "
+            "válida: confira no AI Studio em qual projeto ela foi criada e se é "
+            "esse o projeto com billing vinculado; se for, gere uma chave nova "
+            "num projeto novo. Enquanto isso, o modelo `demo` mostra a interface "
+            "com um relatório simulado."
         )
     if any(t in baixo for t in ("resource_exhausted", "quota", " 429")):
         if "insufficient" in baixo or "billing" in baixo or "plan" in baixo:
@@ -597,6 +641,7 @@ else:
                 help="Envia a radiografia ao modelo (usa ~1.300 tokens a mais). "
                 "Desligado, o chat usa os achados CheXpert já rotulados.",
             )
+            avisar_se_demonstracao(chave_chat)
             hist_key = f"chat_hist_{selecao}"
             historico = st.session_state.setdefault(hist_key, [])
             if cabec[2].button(
@@ -642,9 +687,9 @@ else:
         modelos_disp = catalogo.disponiveis(catalogo.CATALOGO)
         if not modelos_disp:
             st.warning(
-                "Nenhum modelo de LLM disponível. Defina ao menos uma chave de API no "
-                "`.env` (`OPENAI_API_KEY`, `GOOGLE_API_KEY` ou `ANTHROPIC_API_KEY`) "
-                "e recarregue a página.",
+                "Nenhum modelo de LLM disponível. Defina `GOOGLE_API_KEY` no `.env` "
+                "e recarregue a página — ou defina `CLINICALFUSION_DEMO=1` para "
+                "abrir o modo demonstração, com relatório simulado.",
                 icon=":material/key_off:",
             )
         else:
@@ -653,6 +698,7 @@ else:
                 [m.chave for m in modelos_disp],
                 format_func=lambda c: f"{c} — {catalogo.por_chave(c).modelo}",
             )
+            avisar_se_demonstracao(modelo_chave)
             with st.form(key=f"form_{selecao}", border=False):
                 pergunta = st.text_area(
                     "Pergunta",
@@ -679,6 +725,11 @@ else:
                             state="complete" if resposta.ok else "error",
                             expanded=False,
                         )
+                        if resposta.ok and n8n.url_webhook():
+                            st.write("Arquivando o PDF no Google Drive via n8n...")
+                            st.session_state[f"drive_{selecao}"] = arquivar_no_drive(
+                                selecao, pergunta.strip(), resposta
+                            )
                     st.session_state[f"rel_{selecao}"] = (
                         pergunta.strip(),
                         resposta,
@@ -711,6 +762,21 @@ else:
                     f"{resposta.tokens_entrada or 0}/{resposta.tokens_saida or 0}",
                 )
                 mcol[2].metric("Custo estimado", f"US$ {custo:.4f}")
+
+                # Resultado do arquivamento automático no Drive (via n8n).
+                arquivado = st.session_state.get(f"drive_{selecao}")
+                if arquivado:
+                    ok_drive, detalhe = arquivado
+                    if ok_drive:
+                        st.success(
+                            f"Arquivado no Google Drive: `{detalhe}`",
+                            icon=":material/cloud_done:",
+                        )
+                    else:
+                        st.warning(
+                            f"O relatório foi gerado, mas não foi arquivado no Drive. {detalhe}",
+                            icon=":material/cloud_off:",
+                        )
 
                 # Extras: versão para o paciente e exportação em PDF.
                 versao_pac = st.session_state.get(f"pac_{selecao}")
@@ -791,6 +857,7 @@ else:
                 format_func=lambda c: f"{c} — {catalogo.por_chave(c).modelo}",
                 key="modelo_cmp",
             )
+            avisar_se_demonstracao(chave_cmp)
             pergunta_cmp = st.text_input(
                 "Pergunta aplicada aos dois casos",
                 value="Quais são os principais achados e as hipóteses deste caso?",

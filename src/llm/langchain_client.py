@@ -1,16 +1,22 @@
 """
-Orquestracao dos LLMs multimodais via LangChain.
+Orquestracao do LLM multimodal via LangChain.
 
-Um unico cliente (`ClienteLangChain`) atende os tres provedores usando os chat
-models do LangChain (ChatOpenAI, ChatGoogleGenerativeAI, ChatAnthropic). A
-mensagem multimodal (system + texto + imagem) e montada uma vez no formato comum
-do LangChain e a mesma invocacao (`chat.invoke`) serve para todos -- essa e a
-orquestracao que o LangChain nos da: trocar de provedor e trocar a fabrica do
-chat model, nada mais.
+`ClienteLangChain` fala com o Gemini pelo chat model do LangChain
+(ChatGoogleGenerativeAI). A mensagem multimodal (system + texto + imagem) e
+montada no formato comum do LangChain e enviada com `chat.invoke` -- essa e a
+orquestracao que o LangChain nos da: o formato da mensagem e da resposta nao
+depende do SDK do provedor.
+
+O projeto usa APENAS o Gemini (decisao da equipe, ver src/llm/catalogo.py). Os
+ramos de OpenAI e Anthropic foram removidos daqui: enquanto nao forem usados,
+mante-los significava tres caminhos de codigo sem cobertura de teste ao vivo.
+Para reativar um deles, adicionar a entrada em `_INTEGRACAO`, o ramo
+correspondente em `_construir_chat` (ChatOpenAI / ChatAnthropic) e a linha em
+`ENV_POR_PROVEDOR` no catalogo -- o resto da classe e provider-agnostico.
 
 Mantem a fachada `ClienteLLM.gerar` / `RelatorioClinico`, entao benchmark,
-interface e testes nao mudam. As chaves vem do ambiente (via .env carregado por
-config.carregar_env); nenhuma e lida aqui explicitamente, exceto para checar
+interface e testes nao mudam. A chave vem do ambiente (via .env carregado por
+config.carregar_env); nao e lida aqui explicitamente, exceto para checar
 presenca e falhar cedo com uma mensagem clara.
 
 Os pacotes do LangChain sao importados de forma preguicosa para que importar
@@ -25,14 +31,21 @@ from .prompt import PromptMultimodal
 
 # Pacote de integracao LangChain e variavel de ambiente por provedor.
 _INTEGRACAO = {
-    "openai": ("langchain_openai", "OPENAI_API_KEY"),
     "google": ("langchain_google_genai", "GOOGLE_API_KEY"),
-    "anthropic": ("langchain_anthropic", "ANTHROPIC_API_KEY"),
 }
+
+# Modelos que REJEITAM thinking_budget=0. O parametro e aceito na construcao do
+# chat model (nao levanta TypeError) e so estoura na chamada, como
+# "400 INVALID_ARGUMENT: Request contains an invalid argument" -- uma mensagem
+# generica, que nao diz qual argumento e o culpado. Verificado em 2026-07-31:
+# com o parametro o gemini-3.5-flash-lite falha em 100% das chamadas; sem ele,
+# responde normalmente. Se um modelo novo comecar a dar 400 sem motivo aparente,
+# testar primeiro tirando o thinking_budget e, se resolver, incluir aqui.
+_REJEITAM_THINKING_BUDGET = {"gemini-3.5-flash-lite"}
 
 
 class ClienteLangChain(ClienteLLM):
-    """Cliente unico para os tres provedores, orquestrado pelo LangChain."""
+    """Cliente do Gemini, orquestrado pelo LangChain."""
 
     def __init__(self, provedor: str, modelo: str, max_tokens: int = 2000):
         super().__init__(modelo)
@@ -53,39 +66,30 @@ class ClienteLangChain(ClienteLLM):
     @staticmethod
     def _construir_chat(provedor: str, modelo: str, max_tokens: int):
         """Constroi o chat model do LangChain do provedor (import preguicoso)."""
+        if provedor != "google":
+            raise ErroLLM(f"Provedor sem integracao LangChain: {provedor}")
         try:
-            if provedor == "openai":
-                from langchain_openai import ChatOpenAI
-
-                return ChatOpenAI(
-                    model=modelo,
-                    max_tokens=max_tokens,
-                    model_kwargs={"response_format": {"type": "json_object"}},
-                )
-            if provedor == "google":
-                from langchain_google_genai import ChatGoogleGenerativeAI
-
-                # thinking_budget=0 evita que o raciocinio do Gemini 3.x consuma
-                # o orcamento de saida e trunque o JSON.
-                try:
-                    return ChatGoogleGenerativeAI(
-                        model=modelo, max_output_tokens=max_tokens, thinking_budget=0
-                    )
-                except TypeError:  # versao sem o parametro thinking_budget
-                    return ChatGoogleGenerativeAI(
-                        model=modelo, max_output_tokens=max_tokens
-                    )
-            if provedor == "anthropic":
-                from langchain_anthropic import ChatAnthropic
-
-                return ChatAnthropic(model=modelo, max_tokens=max_tokens)
+            from langchain_google_genai import ChatGoogleGenerativeAI
         except ImportError as exc:  # pragma: no cover - depende de instalacao
             pacote, _ = _INTEGRACAO[provedor]
             raise ErroLLM(
                 f"Pacote '{pacote.replace('_', '-')}' nao instalado. "
                 f"Rode: pip install {pacote.replace('_', '-')}"
             ) from exc
-        raise ErroLLM(f"Provedor sem integracao LangChain: {provedor}")
+
+        # max_retries=1 desliga o retry interno do LangChain (padrao 6):
+        # com_retry() ja repete 3 vezes por fora, e 3x6=18 chamadas num
+        # 503 do provedor esgotam a cota diaria do free tier (20/dia).
+        opcoes = {"model": modelo, "max_output_tokens": max_tokens, "max_retries": 1}
+        if modelo in _REJEITAM_THINKING_BUDGET:
+            return ChatGoogleGenerativeAI(**opcoes)
+
+        # thinking_budget=0 evita que o raciocinio do Gemini 3.x consuma
+        # o orcamento de saida e trunque o JSON.
+        try:
+            return ChatGoogleGenerativeAI(thinking_budget=0, **opcoes)
+        except TypeError:  # versao do pacote sem o parametro thinking_budget
+            return ChatGoogleGenerativeAI(**opcoes)
 
     def gerar(self, prompt: PromptMultimodal, max_tokens: int = 2000) -> RespostaLLM:
         from langchain_core.messages import HumanMessage, SystemMessage
