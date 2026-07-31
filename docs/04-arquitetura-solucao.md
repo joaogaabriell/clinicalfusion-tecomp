@@ -14,7 +14,7 @@
 > - **Camada de dados** — leitura das 4 modalidades a partir do subconjunto do Symile-MIMIC.
 > - **Camada de pré-processamento** — normalização de imagem, sinais e tabelas.
 > - **Integração multimodal** — unificação das modalidades em uma representação do caso.
-> - **Construção do prompt** — dados clínicos + exames + pergunta do usuário + instruções.
+> - **Construção do prompt** — dados clínicos + exames + instruções (a pergunta do usuário é opcional: o relatório sai completo com um clique, e o diálogo fica no chat).
 > - **LLM multimodal** — geração do relatório estruturado.
 > - **Interface (Streamlit)** — exibição do caso, dos exames e do relatório.
 

@@ -35,7 +35,8 @@ O app abre em <http://localhost:8501>. Sem o subconjunto gerado, a tela inicial 
 - [x] Visualização da radiografia;
 - [x] Visualização do ECG;
 - [x] Visualização dos exames laboratoriais;
-- [x] Campo para perguntas em linguagem natural;
+- [x] Chat livre sobre o caso (perguntas em linguagem natural, com memória);
+- [x] Relatório completo com um clique (sem caixa de pergunta);
 - [x] Área destinada ao relatório clínico (*placeholder*);
 - [ ] Integração com o LLM multimodal (Semana 3).
 

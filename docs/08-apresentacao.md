@@ -19,7 +19,7 @@ Equipe · Disciplina de Tópicos Especiais
 ## 2. Problema e objetivo
 
 - Dados clínicos de um paciente vêm **fragmentados**: imagem, sinal, tabelas, texto.
-- Objetivo: **integrar** radiografia + ECG + laboratório + dados clínicos e, a partir de uma **pergunta em linguagem natural**, gerar um **relatório estruturado**.
+- Objetivo: **integrar** radiografia + ECG + laboratório + dados clínicos, gerar um **relatório estruturado** com um clique e permitir que o médico **converse** com o modelo sobre o caso.
 - Finalidade **exclusivamente educacional** — não diagnostica, não substitui o médico.
 
 🎙️ Enfatizar o caráter educacional e o aviso de segurança presente em toda a saída.
@@ -83,10 +83,11 @@ Equipe · Disciplina de Tópicos Especiais
 
 1. Selecionar um caso (`patient_0001`, com RX real).
 2. Ver as abas: clínica, radiografia, ECG, laboratório.
-3. Aba **Relatório**: escolher modelo, perguntar, gerar.
+3. Aba **Relatório**: escolher modelo e clicar em **Gerar relatório** (sem digitar nada).
 4. Ver o relatório + **painel de evidências** (RF10) + métricas (latência/tokens/custo).
 5. Botões: **Explicar para o paciente**, **Baixar PDF**.
-6. Aba **Comparar 2 casos**.
+6. Aba **Chat**: perguntar algo específico sobre o caso e mostrar que o modelo mantém o fio da conversa.
+7. Aba **Comparar 2 casos**.
 
 🎙️ Ter um caso pré-testado; ter plano B (screenshots) caso a quota do provedor falhe.
 

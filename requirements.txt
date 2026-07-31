@@ -29,6 +29,6 @@ pytest>=8.0
 # Orquestracao via LangChain: um chat model por provedor, mesma invocacao.
 # Importados de forma preguicosa: instale so os provedores que for usar.
 langchain-core>=0.3
-langchain-openai>=0.2        # GPT-4o / GPT-4.1
-langchain-google-genai>=2.1  # Gemini 2.5 Flash / Pro
-langchain-anthropic>=0.3     # Claude (Opus 4.8 / Sonnet 5)
+langchain-google-genai>=2.1  # Gemini -- unico provedor usado pelo projeto
+# langchain-openai / langchain-anthropic sairam junto com os ramos removidos de
+# src/llm/langchain_client.py; reinstale se algum dia reativar esses provedores.

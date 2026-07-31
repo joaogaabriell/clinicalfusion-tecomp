@@ -3,11 +3,15 @@ Ponto de entrada de linha de comando: gera o relatorio clinico de um caso e o
 imprime em JSON no stdout.
 
 Serve para automacao (ex.: n8n via no "Execute Command", ou um cron): recebe o
-paciente, a pergunta e o modelo, e devolve o relatorio estruturado + telemetria.
+paciente e o modelo, e devolve o relatorio estruturado + telemetria.
+
+A pergunta e OPCIONAL -- sem ela o modelo faz a analise completa do caso, que e
+o mesmo fluxo da interface. Passe --pergunta so para orientar o recorte.
 
 Uso:
+    python -m src.gerar_relatorio --paciente patient_0001 --modelo gemini-flash-lite
     python -m src.gerar_relatorio --paciente patient_0001 \
-        --pergunta "Quais os principais achados?" --modelo gemini-flash
+        --pergunta "Quais os principais achados?"
 """
 
 import argparse
@@ -19,7 +23,7 @@ from . import config, loaders
 from .llm import catalogo, prompt as prompt_mod
 
 
-def gerar(paciente_id: str, pergunta: str, chave_modelo: str) -> dict:
+def gerar(paciente_id: str, pergunta: str | None, chave_modelo: str) -> dict:
     """Gera o relatorio de um caso e devolve um dict serializavel."""
     config.carregar_env()
     candidato = catalogo.por_chave(chave_modelo)
@@ -34,7 +38,7 @@ def gerar(paciente_id: str, pergunta: str, chave_modelo: str) -> dict:
 
     saida = {
         "paciente": paciente_id,
-        "pergunta": pergunta,
+        "pergunta": (pergunta or "").strip(),
         "modelo": resposta.modelo,
         "provedor": resposta.provedor,
         "ok": resposta.ok,
@@ -53,7 +57,11 @@ def gerar(paciente_id: str, pergunta: str, chave_modelo: str) -> dict:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Gera o relatorio clinico de um caso.")
     parser.add_argument("--paciente", required=True, help="Ex.: patient_0001")
-    parser.add_argument("--pergunta", required=True)
+    parser.add_argument(
+        "--pergunta",
+        default=None,
+        help="Opcional: orienta o recorte. Sem ela, analise completa do caso.",
+    )
     parser.add_argument(
         "--modelo",
         default=catalogo.CHAVES_PADRAO[0],

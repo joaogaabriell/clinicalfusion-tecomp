@@ -29,9 +29,10 @@ Disciplina de Tópicos Especiais · Projeto de 1 mês
 
 O **ClinicalFusion** integra quatro modalidades de dados clínicos de um mesmo
 paciente — **radiografia de tórax**, **eletrocardiograma (ECG)**, **exames
-laboratoriais** e **informações clínicas/demográficas** — e, a partir de uma
-pergunta em linguagem natural, gera um **relatório clínico estruturado** com o
-apoio de um **LLM multimodal (Vision-Language Model)**.
+laboratoriais** e **informações clínicas/demográficas** — e gera, com um clique,
+um **relatório clínico estruturado** com o apoio de um **LLM multimodal
+(Vision-Language Model)**. Para aprofundar o caso em linguagem natural, a
+interface traz um **chat** com memória da conversa.
 
 O sistema tem finalidade **exclusivamente educacional**: não realiza diagnóstico
 e não substitui avaliação médica. Ele produz um resumo do caso, destaca os
@@ -227,13 +228,20 @@ quota/crédito ativos (ver §12).
 A interface exibe o caso em abas (Dados clínicos, Radiografia, ECG, Laboratório)
 e concentra o LLM em duas abas:
 
-- **Chat** — perguntas e respostas **conversacionais** com memória (`src/llm/chat.py`).
-  A pergunta específica ("nos exames de sangue, o que está elevado?") recebe uma
-  resposta **direta**, sem repetir o relatório inteiro, ancorada nas evidências.
-- **Relatório** — pergunta em linguagem natural, seleção do modelo, geração do
-  relatório **estruturado** (RF08/RF09) e, ao lado, o **painel de evidências**
-  (RF10) com a radiografia, o ECG, os exames em percentil extremo e os dados
-  clínicos usados.
+- **Chat** — é onde o médico **conversa** com o modelo sobre o caso, com memória
+  da conversa (`src/llm/chat.py`). A pergunta específica ("nos exames de sangue,
+  o que está elevado?") recebe uma resposta **direta**, sem repetir o relatório
+  inteiro, ancorada nas evidências.
+- **Relatório** — seleção do modelo e **um botão**: não há caixa de pergunta. A
+  análise completa é guiada pelo *system prompt* (`src/llm/prompt.py`), que
+  define o que cobrir em cada campo do relatório **estruturado** (RF08/RF09). Ao
+  lado fica o **painel de evidências** (RF10) com a radiografia, o ECG, os
+  exames em percentil extremo e os dados clínicos usados.
+
+> **Por que separar assim:** exigir uma pergunta para gerar o relatório
+> misturava dois usos. Quem abre um caso quer primeiro a leitura completa dele;
+> quem quer perguntar já tem o chat, que responde melhor porque não precisa
+> devolver o JSON inteiro a cada mensagem.
 
 Cobertura dos requisitos:
 
@@ -244,7 +252,7 @@ Cobertura dos requisitos:
 | RF03 | Radiografia | aba Radiografia |
 | RF04 | Exames laboratoriais | aba Laboratório |
 | RF05 | ECG | aba ECG |
-| RF06 | Perguntas em linguagem natural | campo de pergunta + **aba Chat** conversacional com memória |
+| RF06 | Perguntas em linguagem natural | **aba Chat** conversacional com memória (e a pergunta comum aos dois casos, na aba Comparar) |
 | RF07 | Integrar todas as modalidades no prompt | `prompt.montar_prompt` (ECG marcado como mock) |
 | RF08 | Relatório com LLM multimodal | `ClienteLangChain.gerar` |
 | RF09 | Resumo, achados, hipóteses, justificativa, exames, aviso | `renderizar_relatorio` |

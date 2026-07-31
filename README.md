@@ -2,6 +2,8 @@
 
 **Assistente Inteligente Multimodal para Análise Integrada de Casos Clínicos utilizando LLMs Multimodais**
 
+[![CI](https://github.com/joaogaabriell/clinicalfusion-tecomp/actions/workflows/ci.yml/badge.svg)](https://github.com/joaogaabriell/clinicalfusion-tecomp/actions/workflows/ci.yml)
+
 
 ## 📌 Sobre o projeto
 
@@ -131,11 +133,25 @@ O protótipo abre em <http://localhost:8501>. Detalhes em [`app/README.md`](app/
 
 > 🔒 O passo 2 exige **credenciamento no PhysioNet** — cada integrante baixa a própria cópia. A licença do dataset **proíbe compartilhar os dados**, inclusive entre a equipe e em repositório privado. Ver [`SETUP.md`](SETUP.md) e [`data/README.md`](data/README.md).
 
+**Modo demonstração (sem chave de API):**
+
+Quando as chaves não estão disponíveis (sem crédito, projeto bloqueado, sem rede), a interface pode rodar com um relatório **simulado**, para apresentar o fluxo completo:
+
+```bash
+# Windows (PowerShell)
+$env:CLINICALFUSION_DEMO = "1"
+python -m streamlit run app/streamlit_app.py
+```
+
+Isso adiciona o modelo `demo` ao seletor. O conteúdo é um texto fixo do [`src/llm/demo_client.py`](src/llm/demo_client.py), marcado com `[SIMULADO]` em todos os campos — **nenhum modelo é consultado** e os achados radiológicos não correspondem à imagem. Sem a variável, o modo não aparece em lugar nenhum; ele também fica fora do benchmark, que não deve comparar um texto fixo com modelos reais.
+
 **Testes:**
 
 ```bash
 python -m pytest tests
 ```
+
+**Integração contínua:** todo push em `main`, `develop` e `feature/*` (e todo PR para `main`/`develop`) dispara o workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml), que roda a suíte em Python 3.10 e 3.12, passa o `ruff` nos erros que quebram execução, valida o `docker-compose.n8n.yml` e confere que **nenhum dado do Symile-MIMIC nem chave de API** foi versionado. O CI não consome cota da API: sem `GOOGLE_API_KEY`, os testes usam clientes falsos.
 
 ---
 
