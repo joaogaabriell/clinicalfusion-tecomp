@@ -102,5 +102,5 @@ jobs:
           fi
           echo "OK: nenhuma chave versionada."
 
-      - name: Validar o compose do n8n
-        run: docker compose -f docker-compose.n8n.yml config -q
+      - name: Validar o compose (app + n8n)
+        run: docker compose -f docker-compose.yml config -q

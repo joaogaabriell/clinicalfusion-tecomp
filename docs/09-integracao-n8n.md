@@ -5,6 +5,44 @@
 > ser chamado pelo n8n; este documento descreve o fluxo. A execução exige uma
 > instância n8n (local via Docker ou n8n Cloud) — por isso não foi rodada aqui.
 
+## Subir tudo com Docker
+
+`docker-compose.yml` sobe o app Streamlit e o n8n juntos, num único comando:
+
+```bash
+docker compose up -d --build
+```
+
+- App: http://localhost:8501
+- n8n: http://localhost:5678
+
+A chave `GOOGLE_API_KEY` vem do `.env` da raiz (copie `.env.example` para `.env`
+antes, se ainda não fez). O `CLINICALFUSION_N8N_WEBHOOK` já vem configurado
+pelo próprio `docker-compose.yml` apontando para `http://n8n:5678/...` — dentro
+da rede do compose os serviços se enxergam pelo nome, não por `localhost`
+(que dentro do container do app apontaria para ele mesmo).
+
+Na primeira vez que abrir `http://localhost:5678`, o n8n pede para criar um
+**owner local** (nome/e-mail/senha) — isso não é uma conta na nuvem, fica salvo
+só no volume `n8n_data` do container, sem verificação nenhuma.
+
+### Importar o workflow pronto
+
+`n8n/workflow-relatorio-clinico.json` já traz os 3 nós montados (Webhook →
+converte o base64 em PDF → envia ao Google Drive). Para trazê-lo para dentro
+da sua instância:
+
+1. No n8n, **Workflows → Import from File** e selecione
+   `n8n/workflow-relatorio-clinico.json`.
+2. Abra o nó **Google Drive** e crie/selecione a credencial
+   (**Create New Credential → Google Drive OAuth2 API**) — esse é o único
+   passo que exige um clique manual de autorização no navegador (exigência do
+   próprio Google, não dá para pular).
+3. Ative o workflow (chave **Active**, canto superior direito).
+
+Depois disso o fluxo já fica completo: o app manda o PDF pronto para o
+webhook, e o n8n só arquiva no Drive.
+
 ## Ponto de entrada
 
 O módulo `src/gerar_relatorio.py` gera o relatório de um caso e imprime **JSON**
@@ -23,7 +61,7 @@ python -m src.gerar_relatorio \
 > Sem chave de API válida, use `--modelo demo`: devolve um relatório **simulado**
 > (marcado com `[SIMULADO]`, sem chamar API) para demonstrar o fluxo do n8n de
 > ponta a ponta. Exige `CLINICALFUSION_DEMO=1` — já definida no
-> `docker-compose.n8n.yml`.
+> `docker-compose.yml`.
 
 Saída (resumida):
 

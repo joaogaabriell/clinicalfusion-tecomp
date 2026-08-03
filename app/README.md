@@ -8,7 +8,7 @@ Interface do ClinicalFusion.
 |---------|-----------|
 | `streamlit_app.py` | Aplicação Streamlit (tela inicial + visão do caso clínico) |
 | `dados.py` | Ponte entre a interface e o subconjunto do Symile-MIMIC |
-| `mock_data.py` | Pacientes fictícios da primeira versão — **não é mais usado** pelo app |
+| `mock_data.py` | Pacientes fictícios da primeira versão — órfão, **não é mais usado** pelo app (ver Pendências) |
 | `assets/logo.svg` | Logo do projeto |
 | `assets/favicon.png` | Ícone da aba do navegador |
 
@@ -37,8 +37,11 @@ O app abre em <http://localhost:8501>. Sem o subconjunto gerado, a tela inicial 
 - [x] Visualização dos exames laboratoriais;
 - [x] Chat livre sobre o caso (perguntas em linguagem natural, com memória);
 - [x] Relatório completo com um clique (sem caixa de pergunta);
-- [x] Área destinada ao relatório clínico (*placeholder*);
-- [ ] Integração com o LLM multimodal (Semana 3).
+- [x] Relatório clínico estruturado (RF08/RF09), com painel de evidências (RF10);
+- [x] Integração com o LLM multimodal (Gemini, via LangChain — Semana 3);
+- [x] Comparação entre dois casos clínicos;
+- [x] Histórico das gerações da sessão;
+- [x] Modo demonstração sem chave de API (`CLINICALFUSION_DEMO=1`).
 
 ## De onde vêm os dados
 
@@ -61,4 +64,3 @@ A tela mostra a procedência de cada modalidade. O porquê dos mocks está em [`
 ## Pendências
 
 - `mock_data.py` ficou órfão depois da ligação com os dados reais. Mantido por ora — a remoção é decisão do time.
-- O relatório é um *placeholder*: exibe a estrutura do RF09 e as evidências reais do caso, sem gerar texto clínico. Quem preenche é o LLM, na Semana 3.

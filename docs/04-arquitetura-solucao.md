@@ -6,34 +6,80 @@
 
 ## 1. Visão geral
 
-> _A preencher pela equipe._ Descrição textual da arquitetura proposta.
+O ClinicalFusion segue uma arquitetura **em camadas**, com uma **fronteira
+estável** entre a aplicação e o provedor de LLM: tudo passa por
+`ClienteLLM.gerar(prompt) -> RespostaLLM`, o que permite trocar de modelo (ou
+reativar outros provedores) sem tocar na interface, no benchmark ou nos
+testes. Não há banco de dados relacional: o subconjunto do Symile-MIMIC é
+distribuído em arquivos (uma pasta por paciente), e `src/loaders.py` é a
+única porta de entrada para essa estrutura — decisão coerente com o formato
+"uma-pasta-por-paciente" pedido no enunciado e com o volume do projeto
+(100-500 casos).
 
 ## 2. Componentes
 
-> _A preencher pela equipe._ Detalhar cada camada/componente e sua responsabilidade, por exemplo:
-> - **Camada de dados** — leitura das 4 modalidades a partir do subconjunto do Symile-MIMIC.
-> - **Camada de pré-processamento** — normalização de imagem, sinais e tabelas.
-> - **Integração multimodal** — unificação das modalidades em uma representação do caso.
-> - **Construção do prompt** — dados clínicos + exames + instruções (a pergunta do usuário é opcional: o relatório sai completo com um clique, e o diálogo fica no chat).
-> - **LLM multimodal** — geração do relatório estruturado.
-> - **Interface (Streamlit)** — exibição do caso, dos exames e do relatório.
+- **Camada de dados** (`src/config.py`, `src/symile_source.py`,
+  `src/build_subset.py`, `src/loaders.py`) — lê o Symile-MIMIC bruto
+  (credenciado) e monta/lê o subconjunto uma-pasta-por-paciente.
+- **Mock/Augmentation** (`src/mock.py`, `src/augmentation.py`) — gera o ECG
+  sintético e o placeholder de radiografia; aumenta as 46 CXR reais
+  preservando os achados CheXpert (`--n-variacoes`).
+- **Integração multimodal / construção do prompt** (`src/llm/prompt.py`) —
+  unifica as quatro modalidades (dados clínicos + exames + radiografia +
+  ECG marcado como sintético) em um único prompt multimodal; a pergunta do
+  usuário é **opcional** — o relatório completo sai com um clique, e o
+  diálogo livre fica na aba Chat.
+- **LLM multimodal** (`src/llm/langchain_client.py`, `catalogo.py`) — um
+  único `ClienteLangChain` fala com o **Gemini** (`ChatGoogleGenerativeAI`)
+  através do LangChain. A equipe decidiu concentrar o catálogo **apenas no
+  Gemini** (ver §3) para não manter três caminhos de provedor sem cobertura
+  de teste ao vivo; o código do cliente permanece *provider-agnostic* e pode
+  reativar OpenAI/Anthropic re-adicionando a fábrica correspondente.
+- **Relatório estruturado** (`src/llm/relatorio.py`) — esquema
+  `RelatorioClinico` (achados CheXpert avaliáveis + resumo/achados/hipóteses/
+  justificativa/exames/aviso do RF09), construído a partir do JSON devolvido
+  pelo modelo.
+- **Benchmark** (`src/benchmark/metricas.py`, `runner.py`) — compara modelos
+  do catálogo na tarefa central, pontuando os achados radiológicos contra o
+  ground-truth CheXpert (F1, latência, tokens, custo, completude).
+- **Exportação** (`src/export_pdf.py`) — relatório em PDF (desafio extra).
+- **Automação** (`src/gerar_relatorio.py`, `src/n8n.py`) — ponto de entrada
+  CLI (JSON em stdout) para o n8n gerar/arquivar relatórios fora da interface.
+- **Interface** (`app/streamlit_app.py`, `app/dados.py`) — exibição do caso
+  (Dados clínicos, Radiografia, ECG, Laboratório), chat com memória,
+  relatório com um clique + painel de evidências, comparação de dois casos e
+  histórico da sessão.
 
 ## 3. Diagrama da arquitetura
 
-> _Inserir o diagrama. Sugestão: diagrama em Mermaid (renderiza direto no GitHub)._
-
 ```mermaid
 flowchart TD
-    A[Subconjunto Symile-MIMIC] --> B[Leitura das modalidades]
-    B --> C[Pré-processamento]
-    C --> D[Integração multimodal]
-    D --> E[Construção do prompt]
-    E --> F[LLM multimodal]
-    F --> G[Relatório clínico estruturado]
-    G --> H[Interface Streamlit]
-    H -->|nova pergunta| E
+    A[Subconjunto Symile-MIMIC] --> B[Leitura das modalidades<br/>src/loaders.py]
+    B --> C[Construção do prompt multimodal<br/>src/llm/prompt.py]
+    C --> D[ClienteLangChain<br/>src/llm/langchain_client.py]
+    D -->|Google| E[Gemini 3.5 Flash / Flash-Lite / Pro]
+    D -->|sem chave| F[Cliente demonstração<br/>relatório SIMULADO]
+    E --> G[RelatorioClinico<br/>src/llm/relatorio.py]
+    F --> G
+    G --> H[Interface Streamlit<br/>app/streamlit_app.py]
+    G --> I[Benchmark + métricas CheXpert<br/>src/benchmark]
+    H -->|nova pergunta| C
 ```
+
+> Diagrama exportado em alta resolução em
+> [`../documentacao-te/diagramas/01-arquitetura.png`](../documentacao-te/diagramas/01-arquitetura.png).
 
 ## 4. Fluxo de comunicação entre os componentes
 
-> _A preencher pela equipe._ Descrever as interfaces/contratos entre os módulos (entradas e saídas de cada etapa).
+| De | Para | Contrato (entrada → saída) |
+|---|---|---|
+| `src/build_subset.py` | `data/symile-mimic/` | dataset bruto credenciado → pasta por paciente (4 arquivos + `index.csv`) |
+| `src/loaders.py` | `app/`, `src/llm/`, `src/benchmark/` | `paciente_id: str` → `Caso` (radiografia `Image`, ECG/lab `DataFrame`, dados clínicos `dict`) |
+| `src/llm/prompt.py` | `src/llm/langchain_client.py` | `Caso` (+ pergunta opcional) → `PromptMultimodal` (system + texto + imagem `data:` URI) |
+| `src/llm/langchain_client.py` | `src/llm/relatorio.py` | `PromptMultimodal` → texto JSON do modelo |
+| `src/llm/relatorio.py` | `app/streamlit_app.py`, `src/benchmark/` | texto JSON → `RelatorioClinico` (achados CheXpert + campos do RF09) |
+| `app/streamlit_app.py` | `src/llm/langchain_client.py` | seleção de caso/modelo/pergunta → `RespostaLLM` (relatório + telemetria: latência, tokens, custo) |
+
+Essa cadeia de contratos estáveis é o que permite, por exemplo, trocar o
+provedor do LLM ou substituir o ECG mock por um sinal real sem alterar a
+assinatura de nenhuma função a jusante.

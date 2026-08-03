@@ -1,0 +1,53 @@
+# Sobe o app Streamlit e o n8n juntos -- um comando so para ter tudo no ar.
+# Uso:
+#   docker compose up -d --build
+# App: http://localhost:8501
+# n8n: http://localhost:5678
+#
+# A chave de API (GOOGLE_API_KEY) e o resto das variaveis vem do .env da raiz
+# do projeto (copie .env.example para .env antes de subir, se ainda nao fez).
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: clinicalfusion-app
+    restart: unless-stopped
+    ports:
+      - 8501:8501
+    env_file:
+      - .env
+    environment:
+      # Dentro da rede do compose o n8n e alcancado pelo nome do servico, nao
+      # por localhost (que aqui apontaria para o proprio container do app).
+      - CLINICALFUSION_N8N_WEBHOOK=http://n8n:5678/webhook/relatorio-clinico
+    volumes:
+      - ./data:/app/data:ro
+    depends_on:
+      - n8n
+
+  n8n:
+    build:
+      context: .
+      dockerfile: n8n.Dockerfile
+    container_name: clinicalfusion-n8n
+    restart: unless-stopped
+    ports:
+      - 5678:5678
+    environment:
+      - TZ=America/Sao_Paulo
+      - N8N_SECURE_COOKIE=false
+      # Habilita o modelo "demo" (relatorio SIMULADO, sem chamar API) para o no
+      # "Execute Command" poder rodar `--modelo demo` quando nao ha chave de API
+      # valida. Ver src/llm/demo_client.py. Remova esta linha para que o
+      # pipeline do n8n so aceite modelos reais.
+      - CLINICALFUSION_DEMO=1
+    volumes:
+      # Dados/config do proprio n8n (workflows, credenciais), persistentes entre restarts.
+      - n8n_data:/home/node/.n8n
+      # Repositorio do projeto, para o no "Execute Command" rodar
+      # /opt/venv/bin/python -m src.gerar_relatorio a partir daqui.
+      - .:/data/clinicalfusion
+
+volumes:
+  n8n_data:

@@ -2,7 +2,6 @@
 
 **Assistente Inteligente Multimodal para Análise Integrada de Casos Clínicos utilizando LLMs Multimodais**
 
-[![CI](https://github.com/joaogaabriell/clinicalfusion-tecomp/actions/workflows/ci.yml/badge.svg)](https://github.com/joaogaabriell/clinicalfusion-tecomp/actions/workflows/ci.yml)
 
 
 ## 📌 Sobre o projeto
@@ -42,7 +41,8 @@ Clinical-Fusion---TECOMP/
 │   ├── 06-benchmark-llm-multimodal.md   # ambiente de benchmark (Semana 2/3)
 │   ├── 07-relatorio-tecnico.md          # relatório técnico (entregável)
 │   ├── 08-apresentacao.md               # roteiro de slides
-│   └── 09-integracao-n8n.md             # automação (desafio extra)
+│   ├── 09-integracao-n8n.md             # automação (desafio extra)
+│   └── 10-roteiro-video.md              # roteiro do vídeo demonstrativo (entregável)
 ├── data/                     # dados (reais ficam locais/ignorados; ver data/README.md)
 ├── src/                      # código-fonte da aplicação
 │   ├── config.py             # caminhos, specs das modalidades, metadados do MIMIC
@@ -98,11 +98,11 @@ comparação de 2 casos, histórico e ponto de entrada para n8n. Detalhes no
 
 ## 📋 Status — Entrega da Semana 1
 
-- [ ] 1. Estudo do dataset Symile-MIMIC — levantamento dos dados em [`data/README.md`](data/README.md); falta redigir `docs/01-...`
+- [x] 1. Estudo do dataset Symile-MIMIC — [`docs/01-...`](docs/01-estudo-dataset-symile-mimic.md) + [`data/README.md`](data/README.md)
 - [x] 2. Organização das modalidades de dados — [`docs/02-...`](docs/02-organizacao-modalidades.md) + `src/build_subset.py`
-- [ ] 3. Leitura e visualização dos dados — as 4 modalidades já carregam (`src/loaders.py`, `app/`); falta redigir `docs/03-...`
-- [ ] 4. Definição da arquitetura da solução — `docs/04-...`
-- [ ] 5. Análise das tecnologias — `docs/05-...`
+- [x] 3. Leitura e visualização dos dados — [`docs/03-...`](docs/03-leitura-visualizacao.md), 4 modalidades carregando (`src/loaders.py`, `app/`)
+- [x] 4. Definição da arquitetura da solução — [`docs/04-...`](docs/04-arquitetura-solucao.md)
+- [x] 5. Análise das tecnologias — [`docs/05-...`](docs/05-analise-tecnologias.md)
 - [x] 6. Organização do GitHub — este repositório
 - [x] 7. Protótipo inicial da interface (Streamlit) — `app/`
 
@@ -151,7 +151,7 @@ Isso adiciona o modelo `demo` ao seletor. O conteúdo é um texto fixo do [`src/
 python -m pytest tests
 ```
 
-**Integração contínua:** todo push em `main`, `develop` e `feature/*` (e todo PR para `main`/`develop`) dispara o workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml), que roda a suíte em Python 3.10 e 3.12, passa o `ruff` nos erros que quebram execução, valida o `docker-compose.n8n.yml` e confere que **nenhum dado do Symile-MIMIC nem chave de API** foi versionado. O CI não consome cota da API: sem `GOOGLE_API_KEY`, os testes usam clientes falsos.
+**Integração contínua:** todo push em `main`, `develop` e `feature/*` (e todo PR para `main`/`develop`) dispara o workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml), que roda a suíte em Python 3.10 e 3.12, passa o `ruff` nos erros que quebram execução, valida o `docker-compose.yml` e confere que **nenhum dado do Symile-MIMIC nem chave de API** foi versionado. O CI não consome cota da API: sem `GOOGLE_API_KEY`, os testes usam clientes falsos.
 
 ---
 
