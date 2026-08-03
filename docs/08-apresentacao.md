@@ -71,11 +71,11 @@ Equipe · Disciplina de Tópicos Especiais
 
 ## 7. Orquestração com LangChain
 
-- Um cliente, três provedores: `ChatOpenAI`, `ChatGoogleGenerativeAI`, `ChatAnthropic`.
-- Mesma mensagem multimodal, mesma invocação.
-- Robustez: retry em erros transitórios (503/rate-limit); falha rápido em quota/billing.
+- Um cliente (`ClienteLangChain`) fala com `ChatGoogleGenerativeAI`; o catálogo de produção concentra-se no Gemini, decisão da equipe (ver discussão no relatório).
+- Mesma mensagem multimodal, mesma invocação — reativar OpenAI/Anthropic é uma mudança localizada, não uma reescrita.
+- Robustez: retry em erros transitórios (503/rate-limit) com `max_retries=1` interno para não multiplicar com o retry externo; falha rápido em quota/billing.
 
-🎙️ Mencionar aprendizados: Gemini 3.x `thinking_budget=0`; SDK `google-genai`.
+🎙️ Mencionar aprendizados: alguns modelos Gemini recusam `thinking_budget=0` na chamada (não na construção) — a lista de exceções em `langchain_client.py` foi validada com chamada real.
 
 ---
 
@@ -106,25 +106,25 @@ Equipe · Disciplina de Tópicos Especiais
 ## 10. Requisitos e extras
 
 - **RF01–RF10**: todos implementados.
-- Extras entregues: comparação de LLMs, painel de métricas (tempo/custo), tradução para o paciente, PDF, comparação de 2 casos, histórico.
-- Não implementados: explicação visual (bounding boxes), n8n (documentado como guia).
+- Extras entregues: comparação de LLMs, painel de métricas (tempo/custo), tradução para o paciente, PDF, comparação de 2 casos, histórico, integração com n8n (arquivamento automático do PDF via webhook).
+- Não implementado: explicação visual dos achados na radiografia (bounding boxes).
 
-🎙️ Destacar que a comparação de LLMs já garante parte do +20%.
+🎙️ Destacar que a comparação de LLMs (benchmark + comparação manual) já garante parte do +20%.
 
 ---
 
 ## 11. Tecnologias
 
-Python · Streamlit · Pandas · Pillow · Matplotlib · **LangChain** · OpenAI/Gemini/Claude · GitHub (git-flow).
+Python · Streamlit · Pandas · Pillow · Matplotlib · **LangChain** · Google Gemini · GitHub (git-flow) · fpdf2.
 
-🎙️ Justificar Pillow (em vez de OpenCV) e a adição do Claude.
+🎙️ Justificar Pillow (em vez de OpenCV) e a decisão de concentrar o catálogo de produção só no Gemini.
 
 ---
 
 ## 12. Limitações e próximos passos
 
-- Ground-truth **parcial**; ECG **mock**; quota/custo de API.
-- Próximos: rubrica humana da qualidade textual, explicação visual, PDF/relatório automáticos, n8n.
+- Ground-truth **parcial** (só cobre casos com radiografia real); ECG **mock**; quota/custo de API.
+- Próximos: rubrica humana da qualidade textual, explicação visual dos achados, execução efetiva da automação via n8n (hoje documentada e implementada no código, mas depende de uma instância n8n externa ativa).
 
 🎙️ Ser honesto sobre limites — é um projeto educacional.
 
@@ -133,7 +133,7 @@ Python · Streamlit · Pandas · Pillow · Matplotlib · **LangChain** · OpenAI
 ## 13. Encerramento
 
 - ClinicalFusion: 4 modalidades → relatório estruturado educacional, com validação objetiva.
-- 80 testes automatizados; arquitetura extensível.
+- 89 testes automatizados, com integração contínua no GitHub Actions; arquitetura extensível.
 - Obrigado! Perguntas?
 
 🎙️ Fechar reforçando o aviso educacional.

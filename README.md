@@ -98,11 +98,11 @@ comparação de 2 casos, histórico e ponto de entrada para n8n. Detalhes no
 
 ## 📋 Status — Entrega da Semana 1
 
-- [ ] 1. Estudo do dataset Symile-MIMIC — levantamento dos dados em [`data/README.md`](data/README.md); falta redigir `docs/01-...`
+- [x] 1. Estudo do dataset Symile-MIMIC — [`docs/01-...`](docs/01-estudo-dataset-symile-mimic.md) + levantamento em [`data/README.md`](data/README.md)
 - [x] 2. Organização das modalidades de dados — [`docs/02-...`](docs/02-organizacao-modalidades.md) + `src/build_subset.py`
-- [ ] 3. Leitura e visualização dos dados — as 4 modalidades já carregam (`src/loaders.py`, `app/`); falta redigir `docs/03-...`
-- [ ] 4. Definição da arquitetura da solução — `docs/04-...`
-- [ ] 5. Análise das tecnologias — `docs/05-...`
+- [x] 3. Leitura e visualização dos dados — [`docs/03-...`](docs/03-leitura-visualizacao.md) + `src/loaders.py`, `app/`
+- [x] 4. Definição da arquitetura da solução — [`docs/04-...`](docs/04-arquitetura-solucao.md)
+- [x] 5. Análise das tecnologias — [`docs/05-...`](docs/05-analise-tecnologias.md)
 - [x] 6. Organização do GitHub — este repositório
 - [x] 7. Protótipo inicial da interface (Streamlit) — `app/`
 
