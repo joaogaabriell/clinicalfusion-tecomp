@@ -16,7 +16,8 @@ services:
     ports:
       - 8501:8501
     env_file:
-      - .env
+      - path: .env
+        required: false
     environment:
       # Dentro da rede do compose o n8n e alcancado pelo nome do servico, nao
       # por localhost (que aqui apontaria para o proprio container do app).

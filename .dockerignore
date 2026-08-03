@@ -2,6 +2,9 @@
 # O n8n so precisa do requirements.txt (codigo e .env entram via bind mount).
 # O app copia o codigo na imagem, mas o dataset (data/) fica de fora -- entra
 # em tempo de execucao via bind mount (ver docker-compose.yml).
+.env
+.env.*
+!.env.example
 .venv/
 .git/
 __pycache__/
