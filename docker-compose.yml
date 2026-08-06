@@ -22,6 +22,8 @@ services:
       # Dentro da rede do compose o n8n e alcancado pelo nome do servico, nao
       # por localhost (que aqui apontaria para o proprio container do app).
       - CLINICALFUSION_N8N_WEBHOOK=http://n8n:5678/webhook/relatorio-clinico
+      # Fora de /app/data, que e montada somente-leitura abaixo.
+      - CLINICALFUSION_DEMO_DIR=/app/demo
     volumes:
       - ./data:/app/data:ro
     depends_on:
@@ -38,6 +40,24 @@ services:
     environment:
       - TZ=America/Sao_Paulo
       - N8N_SECURE_COOKIE=false
+      # Fixa de proposito: sem ela o n8n sorteia uma no primeiro boot, e a
+      # credencial do Google morre se o volume n8n_data for recriado.
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY:-clinicalfusion-chave-local-troque-em-producao}
+      # Criada no primeiro boot por n8n/provisionar.mjs, dispensando o
+      # assistente de primeiro acesso do n8n.
+      - CLINICALFUSION_N8N_OWNER_EMAIL=${CLINICALFUSION_N8N_OWNER_EMAIL:-admin@clinicalfusion.local}
+      - CLINICALFUSION_N8N_OWNER_PASSWORD=${CLINICALFUSION_N8N_OWNER_PASSWORD:-ClinicalFusion2025}
+      # Escolha UMA: service account (zero login, exige Drive compartilhado) ou
+      # OAuth2 (um unico clique em "Connect my account").
+      - CLINICALFUSION_GDRIVE_SA_JSON=${CLINICALFUSION_GDRIVE_SA_JSON:-}
+      - CLINICALFUSION_GDRIVE_DELEGATED_EMAIL=${CLINICALFUSION_GDRIVE_DELEGATED_EMAIL:-}
+      - CLINICALFUSION_GOOGLE_CLIENT_ID=${CLINICALFUSION_GOOGLE_CLIENT_ID:-}
+      - CLINICALFUSION_GOOGLE_CLIENT_SECRET=${CLINICALFUSION_GOOGLE_CLIENT_SECRET:-}
+      # Destino do upload; vazio = raiz do "My Drive" da conta autorizada.
+      - CLINICALFUSION_DRIVE_ID=${CLINICALFUSION_DRIVE_ID:-}
+      - CLINICALFUSION_DRIVE_FOLDER_ID=${CLINICALFUSION_DRIVE_FOLDER_ID:-}
+      # Reimporta o workflow do JSON a cada boot (descarta ajustes feitos na UI).
+      - CLINICALFUSION_N8N_FORCE_SYNC=${CLINICALFUSION_N8N_FORCE_SYNC:-0}
       # Habilita o modelo "demo" (relatorio SIMULADO, sem chamar API) para o no
       # "Execute Command" poder rodar `--modelo demo` quando nao ha chave de API
       # valida. Ver src/llm/demo_client.py. Remova esta linha para que o

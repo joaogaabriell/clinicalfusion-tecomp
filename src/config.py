@@ -17,6 +17,47 @@ DATA_DIR = REPO_ROOT / "data"
 SUBSET_DIR = DATA_DIR / "symile-mimic"
 
 ENV_VAR_FONTE = "SYMILE_MIMIC_DIR"
+ENV_VAR_DEMO_DIR = "CLINICALFUSION_DEMO_DIR"
+
+ARQUIVO_INDICE = "index.csv"
+
+
+def _demo_dir() -> Path:
+    """
+    Pasta do subconjunto de demonstracao, que precisa ser ESCRIVEL.
+
+    Configuravel porque `data/` nem sempre aceita escrita: no docker-compose ela
+    e montada como somente-leitura, e ali a geracao dos casos ficticios falharia.
+    """
+    definido = (os.environ.get(ENV_VAR_DEMO_DIR) or "").strip()
+    return Path(definido) if definido else DATA_DIR / "demo"
+
+
+# Subconjunto de casos ficticios (src/demo_subset.py), usado quando o real nao
+# existe na maquina. Pasta separada: dado ficticio nunca se mistura com credenciado.
+#
+# Resolvido na importacao, entao `CLINICALFUSION_DEMO_DIR` precisa ser variavel de
+# ambiente de verdade -- o `.env` so e lido depois, por `carregar_env`.
+DEMO_DIR = _demo_dir()
+
+
+def subset_ativo() -> Path | None:
+    """
+    Pasta do subconjunto que a interface deve ler, ou None se nao houver nenhum.
+
+    O real tem precedencia: numa maquina credenciada, o app mostra os dados reais
+    sem precisar de configuracao.
+    """
+    for pasta in (SUBSET_DIR, DEMO_DIR):
+        if (pasta / ARQUIVO_INDICE).is_file():
+            return pasta
+    return None
+
+
+def em_demonstracao() -> bool:
+    """Se a interface esta lendo casos ficticios em vez do subconjunto real."""
+    return subset_ativo() == DEMO_DIR
+
 
 # --- Specs das modalidades -------------------------------------------------
 

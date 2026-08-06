@@ -1,0 +1,83 @@
+{
+  "name": "Relatório Clínico → Google Drive",
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true
+  },
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "relatorio-clinico",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "c1f00001-0000-4000-8000-000000000001",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "c1f00001-0000-4000-8000-000000000001",
+      "notes": "POST do Streamlit: paciente, pergunta, modelo, arquivo, pdf_base64. Ver src/n8n.py."
+    },
+    {
+      "parameters": {
+        "jsCode": "// O app manda o PDF ja pronto em base64 (a inferencia foi paga na interface).\n// Aqui ele volta a ser binario para o no do Google Drive fazer o upload.\nconst saida = [];\n\nfor (const item of $input.all()) {\n  const corpo = item.json.body ?? item.json;\n  const b64 = corpo.pdf_base64;\n\n  if (!b64) {\n    throw new Error('Payload sem \"pdf_base64\" - conferir src/n8n.py no projeto.');\n  }\n\n  const nome = corpo.arquivo || `relatorio_${corpo.paciente || 'sem-id'}.pdf`;\n\n  saida.push({\n    json: {\n      paciente: corpo.paciente ?? '',\n      pergunta: corpo.pergunta ?? '',\n      modelo: corpo.modelo ?? '',\n      arquivo: nome,\n    },\n    binary: {\n      data: await this.helpers.prepareBinaryData(\n        Buffer.from(b64, 'base64'),\n        nome,\n        'application/pdf',\n      ),\n    },\n  });\n}\n\nreturn saida;\n"
+      },
+      "id": "c1f00001-0000-4000-8000-000000000002",
+      "name": "PDF (base64 → binário)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [220, 0]
+    },
+    {
+      "parameters": {
+        "name": "={{ $json.arquivo }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.CLINICALFUSION_DRIVE_ID || 'My Drive' }}"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.CLINICALFUSION_DRIVE_FOLDER_ID || 'root' }}"
+        },
+        "inputDataFieldName": "data",
+        "options": {}
+      },
+      "id": "c1f00001-0000-4000-8000-000000000003",
+      "name": "Google Drive",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [440, 0],
+      "notes": "Pasta destino via CLINICALFUSION_DRIVE_FOLDER_ID no .env (vazio = raiz do Drive)."
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "PDF (base64 → binário)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDF (base64 → binário)": {
+      "main": [
+        [
+          {
+            "node": "Google Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {}
+}

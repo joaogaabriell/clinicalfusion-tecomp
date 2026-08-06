@@ -38,6 +38,22 @@ def url_webhook() -> str | None:
     return valor or None
 
 
+def diagnostico_visivel() -> bool:
+    """
+    Se a interface deve mostrar o motivo tecnico de uma falha de arquivamento.
+
+    Para o usuario final e ruido: ele nao administra o n8n e o relatorio dele saiu
+    normalmente. O motivo fica no log do container, e na tela so com
+    CLINICALFUSION_DEBUG=1.
+    """
+    config.carregar_env()
+    return (os.environ.get("CLINICALFUSION_DEBUG") or "").strip().lower() in {
+        "1",
+        "true",
+        "sim",
+    }
+
+
 def enviar_relatorio(
     paciente_id: str,
     pergunta: str | None,

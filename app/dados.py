@@ -31,11 +31,17 @@ SEXO = {"M": "Masculino", "F": "Feminino"}
 
 
 def subconjunto_disponivel() -> bool:
-    return (config.SUBSET_DIR / loaders.ARQUIVO_INDICE).is_file()
+    """Se ha algum subconjunto legivel -- o real credenciado ou o de demonstracao."""
+    return config.subset_ativo() is not None
+
+
+def em_demonstracao() -> bool:
+    """Se os casos na tela sao ficticios (ver src/demo_subset.py)."""
+    return config.em_demonstracao()
 
 
 def listar_casos() -> pd.DataFrame:
-    return loaders.listar_pacientes()
+    return loaders.listar_pacientes(config.subset_ativo())
 
 
 AUSENTE = "—"
@@ -67,7 +73,7 @@ def rotulo_paciente(paciente_id: str, indice: pd.DataFrame) -> str:
 
 
 def carregar(paciente_id: str) -> loaders.Caso:
-    return loaders.carregar_caso(paciente_id)
+    return loaders.carregar_caso(paciente_id, config.subset_ativo())
 
 
 def sexo_extenso(sigla: str | None) -> str:

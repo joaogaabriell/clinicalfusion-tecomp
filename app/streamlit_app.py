@@ -32,7 +32,7 @@ import dados
 
 from datetime import datetime  # noqa: E402
 
-from src import config, export_pdf, n8n  # noqa: E402
+from src import config, demo_subset, export_pdf, n8n  # noqa: E402
 from src.llm import catalogo, chat as chat_mod, extras, prompt as prompt_mod  # noqa: E402
 
 # Carrega as chaves de API do .env para o ambiente (os clientes leem de os.environ).
@@ -191,7 +191,8 @@ def arquivar_no_drive(paciente_id: str, resposta, pergunta: str | None = None):
     exatamente o mesmo relatorio que esta na tela, sem uma segunda chamada paga.
 
     Falhar aqui nao pode custar o relatorio ao usuario -- ele ja foi gerado e
-    pago. Por isso devolve o erro como texto em vez de propagar.
+    pago. Por isso devolve o erro como texto em vez de propagar, e o motivo
+    tecnico vai para o stderr, nao para a tela (ver `n8n.diagnostico_visivel`).
 
     Returns:
         (sucesso: bool, mensagem: str).
@@ -203,9 +204,12 @@ def arquivar_no_drive(paciente_id: str, resposta, pergunta: str | None = None):
         nome = n8n.enviar_relatorio(paciente_id, pergunta, resposta.modelo, pdf)
         return True, nome
     except n8n.ErroN8N as exc:
-        return False, str(exc)
+        motivo = str(exc)
     except Exception as exc:  # noqa: BLE001 - arquivamento nunca derruba a geracao
-        return False, f"Falha inesperada ao arquivar: {exc}"
+        motivo = f"Falha inesperada ao arquivar: {exc}"
+
+    print(f"[n8n] arquivamento de {paciente_id} falhou: {motivo}", file=sys.stderr)
+    return False, motivo
 
 
 def avisar_se_demonstracao(chave: str) -> None:
@@ -320,27 +324,21 @@ def voltar_para_inicio():
     st.session_state.sel_paciente = None
 
 
-# O app depende do subconjunto gerado localmente a partir dos dados credenciados;
-# sem ele nao ha caso nenhum para mostrar.
+# Sem nenhum subconjunto na máquina, o app cai em MODO DEMONSTRAÇÃO com casos
+# fictícios em vez de travar numa tela de erro: os dados do Symile-MIMIC são
+# credenciados e não acompanham a aplicação. O subconjunto real, se existir, tem
+# precedência (ver config.subset_ativo).
 if not dados.subconjunto_disponivel():
-    st.error(
-        "**Subconjunto não encontrado.** Os dados do Symile-MIMIC são de acesso credenciado "
-        "e não acompanham o repositório.",
-        icon=":material/database_off:",
-    )
-    st.markdown(
-        """
-Para gerar o subconjunto na sua máquina:
-
-```bash
-cp .env.example .env        # e ajuste SYMILE_MIMIC_DIR
-python -m src.build_subset --n-casos 150
-```
-
-Detalhes em [`data/README.md`](../data/README.md).
-"""
-    )
-    st.stop()
+    with st.spinner("Primeiro uso: gerando casos de demonstração..."):
+        try:
+            demo_subset.garantir()
+        except Exception as exc:  # noqa: BLE001 - sem dados não há tela; explique
+            st.error(
+                f"**Não consegui preparar os casos de demonstração.** {exc}",
+                icon=":material/database_off:",
+            )
+            st.stop()
+    indice_cache.clear()
 
 INDICE = indice_cache()
 
@@ -402,6 +400,16 @@ with st.sidebar:
         "Uso **exclusivamente educacional**. Não realiza diagnóstico médico.",
         icon=":material/warning:",
     )
+
+    # Inconfundível de propósito: quem vê a tela de longe, numa apresentação, não
+    # pode achar que são casos reais do Symile-MIMIC.
+    if dados.em_demonstracao():
+        st.error(
+            "**Modo demonstração.** Casos **fictícios**, gerados pelo próprio app. "
+            "Nenhum dado do Symile-MIMIC — o dataset é de acesso credenciado e sua "
+            "DUA proíbe redistribuição.",
+            icon=":material/science:",
+        )
 
 
 # ---------------------------------------------------------------- 6. TELA INICIAL
@@ -781,7 +789,10 @@ else:
                             f"Arquivado no Google Drive: `{detalhe}`",
                             icon=":material/cloud_done:",
                         )
-                    else:
+                    elif n8n.diagnostico_visivel():
+                        # Só para quem opera a stack. Para o usuário final o
+                        # arquivamento é silencioso: o relatório está na tela e o PDF
+                        # é baixável, então o estado do n8n não lhe diz nada.
                         st.warning(
                             f"O relatório foi gerado, mas não foi arquivado no Drive. {detalhe}",
                             icon=":material/cloud_off:",

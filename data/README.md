@@ -4,6 +4,32 @@
 
 ---
 
+## 🧪 Modo demonstração (sem dados credenciados)
+
+Quem não tem o Symile-MIMIC não fica sem nada na tela: **na primeira abertura o app
+gera sozinho um subconjunto de casos fictícios** e roda em *modo demonstração*, sem
+exigir comando nenhum. É o que permite distribuir o app (executável ou link) sem
+redistribuir dado credenciado — porque não há dado credenciado nele.
+
+```bash
+python -m src.demo_subset --n-casos 24    # opcional: gerar à mão
+```
+
+- Vai para `data/demo/` (ignorado pelo Git; configurável em `CLINICALFUSION_DEMO_DIR`).
+- Formato **idêntico** ao do subconjunto real, então `src/loaders.py` lê os dois sem
+  distinção — a interface não tem caminho de código alternativo.
+- Os casos são **determinísticos**: o mesmo `demo_0001` sai igual em qualquer máquina.
+- Cada caso se identifica como fictício na proveniência, e a interface mostra um
+  aviso permanente na barra lateral. Os `subject_id` ficam na faixa `9xxxxxxx`,
+  fora da usada pelo MIMIC, para nunca serem confundidos com um paciente real.
+- **Havendo o subconjunto real, ele tem precedência** — o modo demonstração nunca
+  mascara os dados de quem é credenciado.
+
+Implementação em [`src/demo_subset.py`](../src/demo_subset.py); testes em
+`tests/test_demo_subset.py`.
+
+---
+
 ## ⚠️ O material disponibilizado está incompleto
 
 A pasta do Symile-MIMIC que recebemos **não traz todas as modalidades em formato bruto**. O que existe de fato:

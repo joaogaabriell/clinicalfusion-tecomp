@@ -22,26 +22,44 @@ pelo próprio `docker-compose.yml` apontando para `http://n8n:5678/...` — dent
 da rede do compose os serviços se enxergam pelo nome, não por `localhost`
 (que dentro do container do app apontaria para ele mesmo).
 
-Na primeira vez que abrir `http://localhost:5678`, o n8n pede para criar um
-**owner local** (nome/e-mail/senha) — isso não é uma conta na nuvem, fica salvo
-só no volume `n8n_data` do container, sem verificação nenhuma.
+### Provisionamento automático (nada de cliques no n8n)
 
-### Importar o workflow pronto
+Uma instância nova do n8n normalmente exige quatro passos manuais antes de o
+webhook existir: criar o *owner* local, importar o workflow, ligar a credencial
+do Google e ativar o workflow. **O container faz os quatro sozinho no boot**
+(`n8n/entrypoint.sh` → `n8n/provisionar.mjs`), de forma idempotente:
 
-`n8n/workflow-relatorio-clinico.json` já traz os 3 nós montados (Webhook →
-converte o base64 em PDF → envia ao Google Drive). Para trazê-lo para dentro
-da sua instância:
+| Passo | Como é resolvido |
+| --- | --- |
+| Owner local | Criado a partir de `CLINICALFUSION_N8N_OWNER_EMAIL` / `_PASSWORD` — conta padrão fixa, sem assistente de primeiro acesso. Não é conta na nuvem: fica só no volume `n8n_data`. |
+| Workflow | `n8n/workflow-relatorio-clinico.json` importado via API REST (Webhook → converte o base64 em PDF → envia ao Google Drive). |
+| Credencial do Google | Criada a partir do `.env` (service account **ou** client OAuth2 — ver abaixo). |
+| Ativação | `PATCH active: true`. **É este passo que faz o path `/webhook/` existir**; sem ele o `POST` do app volta `404`. |
 
-1. No n8n, **Workflows → Import from File** e selecione
-   `n8n/workflow-relatorio-clinico.json`.
-2. Abra o nó **Google Drive** e crie/selecione a credencial
-   (**Create New Credential → Google Drive OAuth2 API**) — esse é o único
-   passo que exige um clique manual de autorização no navegador (exigência do
-   próprio Google, não dá para pular).
-3. Ative o workflow (chave **Active**, canto superior direito).
+Reimportar não sobrescreve um workflow já existente, para não apagar ajustes
+feitos na interface. Para forçar a ressincronização a partir do JSON, suba com
+`CLINICALFUSION_N8N_FORCE_SYNC=1`.
 
-Depois disso o fluxo já fica completo: o app manda o PDF pronto para o
-webhook, e o n8n só arquiva no Drive.
+### O login do Google
+
+O usuário final nunca abre o n8n — ele usa só o Streamlit na porta 8501. Já a
+autorização do Google tem dois caminhos, e a escolha decide se ainda sobra algum
+clique para quem administra:
+
+- **Service account** (`CLINICALFUSION_GDRIVE_SA_JSON`) — **zero login, nem no
+  Google**. Em troca, uma restrição do próprio Google: service account não tem
+  cota de armazenamento, então a pasta de destino precisa estar num **Drive
+  compartilhado** onde o e-mail da service account seja editor.
+- **OAuth2** (`CLINICALFUSION_GOOGLE_CLIENT_ID` / `_SECRET`) — o script já cria a
+  credencial com o client preenchido; sobra **um clique, uma única vez**, em
+  *Connect my account*, porque a tela de consentimento do Google não pode ser
+  automatizada. O token fica no volume `n8n_data` e vale indefinidamente.
+
+Para o token sobreviver à recriação do volume, `N8N_ENCRYPTION_KEY` está fixa no
+`docker-compose.yml`. Se o volume já tiver uma chave própria (sorteada num boot
+anterior), o entrypoint mantém a do volume e ignora a variável — impor outra faz
+o n8n abortar em loop com *"Mismatching encryption keys"*, que aparece no log
+disfarçado de `command start not found`.
 
 ## Ponto de entrada
 
@@ -114,19 +132,36 @@ relatório, ela manda o PDF pronto para um segundo workflow, que só faz o uploa
 pago) na interface. Se o workflow chamasse o LLM de novo, seriam duas cobranças e dois
 textos possivelmente diferentes — o arquivo no Drive não seria o mesmo que está na tela.
 
-Para ligar:
+Para ligar, subindo via `docker compose up -d`, não há nada a fazer: o workflow é
+importado e **ativado** no boot (seção *Provisionamento automático*) e o
+`CLINICALFUSION_N8N_WEBHOOK` já vem do próprio compose. Rodando o app fora do
+Docker, defina no `.env`:
 
-1. No n8n, deixe o workflow **"App → Google Drive (webhook)" ativo** (chave *Active*). A URL
-   de produção (`/webhook/...`) só responde com o workflow ativo — se estiver inativo, o
-   `POST` volta `404`, e é isso que a interface reporta.
-2. No `.env`, defina:
-   ```
-   CLINICALFUSION_N8N_WEBHOOK=http://localhost:5678/webhook/relatorio-clinico
-   ```
+```
+CLINICALFUSION_N8N_WEBHOOK=http://localhost:5678/webhook/relatorio-clinico
+```
 
-Sem essa variável a interface funciona igual, apenas sem arquivar. O envio nunca derruba a
-geração: se o n8n estiver fora do ar, o relatório aparece normalmente e a tela mostra um
-aviso de que não foi arquivado (`src/n8n.py` e `arquivar_no_drive` em `app/streamlit_app.py`).
+Sem essa variável a interface funciona igual, apenas sem arquivar.
+
+### Quando o arquivamento falha
+
+O envio nunca derruba a geração — o relatório já foi gerado (e pago) antes do
+`POST`. Se o n8n estiver fora do ar ou o workflow inativo, o relatório aparece
+normalmente na tela e **o usuário final não vê nada sobre isso**: arquivar é
+etapa de infraestrutura, e ele não tem como agir sobre ela.
+
+O motivo técnico vai para o log do container (`docker compose logs app`). Para
+trazê-lo de volta à tela durante a operação, use `CLINICALFUSION_DEBUG=1`. Ver
+`n8n.diagnostico_visivel` em `src/n8n.py` e `arquivar_no_drive` em
+`app/streamlit_app.py`.
+
+Códigos que aparecem no log e o que cada um significa:
+
+| Resposta do n8n | Causa |
+| --- | --- |
+| `404` | Workflow inexistente ou **inativo** — o path `/webhook/` só existe com o workflow ativo. Era o sintoma antes do provisionamento automático. |
+| `500` | O workflow rodou e falhou; quase sempre o nó do Drive sem credencial ou sem permissão na pasta. Veja a execução em *Executions*, no n8n. |
+| sem resposta | Container do n8n fora do ar (`docker ps`). |
 
 ## Observações
 

@@ -29,6 +29,11 @@ symile-mimic*.zip
 # em data/sample_patients/. O restante gerado localmente fica ignorado.)
 data/generated/
 
+# Subconjunto de demonstracao (src/demo_subset.py). Casos ficticios, entao a DUA
+# nao se aplica -- fica fora do Git so por ser gerado: o app o recria sozinho no
+# primeiro uso, e versiona-lo poria ~17 MB de CSV no repositorio.
+data/demo/
+
 # Resultados do benchmark de LLMs (respostas brutas, CSV e relatorio gerados
 # localmente; podem conter texto de saida dos modelos).
 benchmark_resultados/
