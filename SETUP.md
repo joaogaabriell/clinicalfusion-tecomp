@@ -22,7 +22,7 @@ Isso **não atrapalha o trabalho em equipe**: o `src/build_subset.py` é determi
 
 ## 📋 Pré-requisitos
 
-- **Python 3.10+** (`python --version`)
+- **Python 3.10, 3.11 ou 3.12** (`python --version`) — 3.13 ainda não foi validado
 - **Git**
 - **~1 GB de disco livre** — o dataset baixado (~690 MB) e o subconjunto gerado (~80 MB)
 - Credenciamento no PhysioNet aprovado — só para a Parte 2

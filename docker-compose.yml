@@ -1,8 +1,7 @@
-# Sobe o app Streamlit e o n8n juntos -- um comando so para ter tudo no ar.
+# Sobe o app Streamlit em container -- alternativa aos lancadores iniciar.bat/.sh.
 # Uso:
 #   docker compose up -d --build
 # App: http://localhost:8501
-# n8n: http://localhost:5678
 #
 # A chave de API (GOOGLE_API_KEY) e o resto das variaveis vem do .env da raiz
 # do projeto (copie .env.example para .env antes de subir, se ainda nao fez).
@@ -19,52 +18,9 @@ services:
       - path: .env
         required: false
     environment:
-      # Dentro da rede do compose o n8n e alcancado pelo nome do servico, nao
-      # por localhost (que aqui apontaria para o proprio container do app).
-      - CLINICALFUSION_N8N_WEBHOOK=http://n8n:5678/webhook/relatorio-clinico
       # Fora de /app/data, que e montada somente-leitura abaixo.
       - CLINICALFUSION_DEMO_DIR=/app/demo
       # O relatorio simulado continua disponivel mesmo sem chave do Gemini.
       - CLINICALFUSION_DEMO=1
     volumes:
       - ./data:/app/data:ro
-    depends_on:
-      - n8n
-
-  n8n:
-    build:
-      context: .
-      dockerfile: n8n.Dockerfile
-    container_name: clinicalfusion-n8n
-    restart: unless-stopped
-    ports:
-      - 127.0.0.1:5678:5678
-    environment:
-      - TZ=America/Sao_Paulo
-      - N8N_SECURE_COOKIE=false
-      - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
-      - N8N_DIAGNOSTICS_ENABLED=false
-      - N8N_VERSION_NOTIFICATIONS_ENABLED=false
-      # Fixa para preservar a configuracao local do n8n entre recriacoes.
-      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY:-clinicalfusion-chave-local-troque-em-producao}
-      # Criada no primeiro boot por n8n/provisionar.mjs, dispensando o
-      # assistente de primeiro acesso do n8n.
-      - CLINICALFUSION_N8N_OWNER_EMAIL=${CLINICALFUSION_N8N_OWNER_EMAIL:-admin@clinicalfusion.local}
-      - CLINICALFUSION_N8N_OWNER_PASSWORD=${CLINICALFUSION_N8N_OWNER_PASSWORD:-ClinicalFusion2025}
-      # Habilita o modelo "demo" (relatorio SIMULADO, sem chamar API) para o no
-      # "Execute Command" poder rodar `--modelo demo` quando nao ha chave de API
-      # valida. Ver src/llm/demo_client.py. Remova esta linha para que o
-      # pipeline do n8n so aceite modelos reais.
-      - CLINICALFUSION_DEMO=1
-    volumes:
-      # Dados/config do proprio n8n (workflows, credenciais), persistentes entre restarts.
-      - n8n_data:/home/node/.n8n
-      # Repositorio do projeto, para o no "Execute Command" rodar
-      # /opt/venv/bin/python -m src.gerar_relatorio a partir daqui.
-      - .:/data/clinicalfusion
-      # O n8n grava aqui; o usuario pode mapear uma pasta espelhada pelo Google
-      # Drive para computador via CLINICALFUSION_RELATORIOS_DIR no .env.
-      - ${CLINICALFUSION_RELATORIOS_DIR:-./relatorios}:/relatorios
-
-volumes:
-  n8n_data:

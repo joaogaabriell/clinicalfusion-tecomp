@@ -35,10 +35,10 @@ Cobertura: 80 testes automatizados passando.
 - relatorio.py: esquema do relatorio (RelatorioClinico) — achados CheXpert
   avaliaveis + resumo/achados/hipoteses/justificativa/exames/aviso (RF09).
 - catalogo.py: catalogo de modelos + variavel de ambiente + PRECO (custo/1M tokens).
-  A equipe decidiu usar APENAS o Gemini -> catalogo com gemini-flash,
-  gemini-flash-lite, gemini-2-flash e gemini-pro. O codigo (LangChain) continua
-  suportando OpenAI e Anthropic; para reativar, descomente as linhas em
-  ENV_POR_PROVEDOR e readicione as entradas no CATALOGO.
+  A equipe decidiu usar APENAS o Gemini -> catalogo com gemini-flash-lite,
+  gemini-flash e gemini-pro. O codigo (LangChain) continua provider-agnostic;
+  para reativar OpenAI/Anthropic, descomente as linhas em ENV_POR_PROVEDOR,
+  readicione as entradas no CATALOGO e a fabrica em langchain_client.py.
 - extras.py: traducao do relatorio para linguagem acessivel ao paciente.
 - chat.py: modo chat conversacional (respostas diretas, com memoria).
 
@@ -61,7 +61,7 @@ Aprendizados tecnicos:
 - Comandos:
     python -m src.benchmark.runner --listar
     python -m src.benchmark.runner --com-aug
-    python -m src.benchmark.runner --modelos gemini-flash gpt-4o
+    python -m src.benchmark.runner --modelos gemini-flash-lite gemini-flash
 
 
 4. INTERFACE STREAMLIT  (app/streamlit_app.py)
@@ -87,9 +87,9 @@ Laboratorio, CHAT, RELATORIO, COMPARAR 2 CASOS.
 [x] Geracao do relatorio em PDF (src/export_pdf.py)
 [x] Comparacao entre dois casos clinicos
 [x] Historico de casos analisados
-[x] Ponto de entrada para n8n (src/gerar_relatorio.py -> JSON)
+[x] Pontos de entrada CLI para automacao (src/gerar_relatorio.py -> JSON,
+    src/exportar_pdf.py -> PDF em disco)
 [ ] Explicacao visual dos achados (bounding boxes) — nao implementado
-[ ] n8n rodando — so o ponto de entrada + guia (docs/09)
 
 
 6. DOCUMENTACAO
@@ -97,14 +97,14 @@ Laboratorio, CHAT, RELATORIO, COMPARAR 2 CASOS.
 - docs/06-benchmark-llm-multimodal.md  — ambiente de benchmark
 - docs/07-relatorio-tecnico.md         — relatorio tecnico (entregavel)
 - docs/08-apresentacao.md              — roteiro de slides
-- docs/09-integracao-n8n.md            — automacao
 - README.md e docs/README.md atualizados
 
 
 7. DEPENDENCIAS ADICIONADAS (requirements.txt)
 ----------------------------------------------
-langchain-core, langchain-openai, langchain-google-genai, langchain-anthropic,
-fpdf2. (openai/google-genai/anthropic vem via LangChain.)
+langchain-core, langchain-google-genai, google-genai, fpdf2.
+(Os ramos de OpenAI e Anthropic foram removidos depois, quando a equipe
+concentrou o catalogo de producao apenas no Gemini.)
 
 
 8. OTIMIZACAO DE TOKENS (chat)

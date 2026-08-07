@@ -34,7 +34,7 @@ import dados
 
 from datetime import datetime  # noqa: E402
 
-from src import config, demo_subset, export_pdf, n8n  # noqa: E402
+from src import config, demo_subset, export_pdf  # noqa: E402
 from src.llm import catalogo, chat as chat_mod, extras, prompt as prompt_mod  # noqa: E402
 
 # Carrega as chaves de API do .env para o ambiente (os clientes leem de os.environ).
@@ -227,35 +227,6 @@ def gerar_relatorio(caso, pergunta: str | None, candidato):
     cliente = candidato.instanciar()
     prompt = prompt_mod.montar_prompt(caso, pergunta)
     return cliente.gerar(prompt)
-
-
-def arquivar_no_drive(paciente_id: str, resposta, pergunta: str | None = None):
-    """
-    Manda o PDF ao n8n, que grava na pasta local sincronizada pelo Drive.
-
-    O PDF vai pronto (o n8n nao refaz a inferencia): o arquivo no Drive e
-    exatamente o mesmo relatorio que esta na tela, sem uma segunda chamada paga.
-
-    Falhar aqui nao pode custar o relatorio ao usuario -- ele ja foi gerado e
-    pago. Por isso devolve o erro como texto em vez de propagar, e o motivo
-    tecnico vai para o stderr, nao para a tela (ver `n8n.diagnostico_visivel`).
-
-    Returns:
-        (sucesso: bool, mensagem: str).
-    """
-    try:
-        pdf = export_pdf.relatorio_para_pdf(
-            paciente_id, pergunta, resposta.modelo, resposta.relatorio
-        )
-        nome = n8n.enviar_relatorio(paciente_id, pergunta, resposta.modelo, pdf)
-        return True, nome
-    except n8n.ErroN8N as exc:
-        motivo = str(exc)
-    except Exception as exc:  # noqa: BLE001 - arquivamento nunca derruba a geracao
-        motivo = f"Falha inesperada ao arquivar: {exc}"
-
-    print(f"[n8n] arquivamento de {paciente_id} falhou: {motivo}", file=sys.stderr)
-    return False, motivo
 
 
 def avisar_se_demonstracao(chave: str) -> None:
@@ -804,11 +775,6 @@ else:
                         state="complete" if resposta.ok else "error",
                         expanded=False,
                     )
-                    if resposta.ok and n8n.url_webhook():
-                        st.write("Arquivando o PDF na pasta sincronizada via n8n...")
-                        st.session_state[f"drive_{selecao}"] = arquivar_no_drive(
-                            selecao, resposta
-                        )
                 st.session_state[f"rel_{selecao}"] = (resposta, modelo_chave)
                 st.session_state.pop(f"pac_{selecao}", None)  # limpa versao antiga
                 if resposta.ok:
@@ -837,25 +803,6 @@ else:
                     f"{resposta.tokens_entrada or 0}/{resposta.tokens_saida or 0}",
                 )
                 mcol[2].metric("Custo estimado", f"US$ {custo:.4f}")
-
-                # Resultado do arquivamento na pasta sincronizada (via n8n).
-                arquivado = st.session_state.get(f"drive_{selecao}")
-                if arquivado:
-                    ok_drive, detalhe = arquivado
-                    if ok_drive:
-                        st.success(
-                            f"Arquivado na pasta sincronizada: `{detalhe}`",
-                            icon=":material/cloud_done:",
-                        )
-                    elif n8n.diagnostico_visivel():
-                        # Só para quem opera a stack. Para o usuário final o
-                        # arquivamento é silencioso: o relatório está na tela e o PDF
-                        # é baixável, então o estado do n8n não lhe diz nada.
-                        st.warning(
-                            "O relatório foi gerado, mas não foi arquivado na pasta "
-                            f"sincronizada. {detalhe}",
-                            icon=":material/cloud_off:",
-                        )
 
                 # Extras: versão para o paciente e exportação em PDF.
                 versao_pac = st.session_state.get(f"pac_{selecao}")

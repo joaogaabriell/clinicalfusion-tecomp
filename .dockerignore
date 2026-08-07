@@ -1,5 +1,4 @@
-# Contexto de build compartilhado por Dockerfile (app) e n8n.Dockerfile.
-# O n8n so precisa do requirements.txt (codigo e .env entram via bind mount).
+# Contexto de build do Dockerfile (app).
 # O app copia o codigo na imagem, mas o dataset (data/) fica de fora -- entra
 # em tempo de execucao via bind mount (ver docker-compose.yml).
 .env

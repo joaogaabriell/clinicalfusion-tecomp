@@ -1,11 +1,8 @@
-# 11 — Manual de uso
+# 09 — Manual de uso
 
 > **Para quem vai avaliar o projeto.** Este documento explica como executar o
 > ClinicalFusion a partir do `.zip` recebido e o que fazer em cada tela. Não é
-> necessário instalar Docker, nem digitar comandos, nem configurar nada para o
-> uso normal. O arquivamento automático no Drive é um recurso opcional e tem
-> pré-requisitos próprios, descritos em
-> [`12-drive-automatico.md`](12-drive-automatico.md).
+> necessário instalar Docker, nem digitar comandos, nem configurar nada.
 >
 > Se você só quer começar, leia a seção 2 e pare. O resto é referência.
 
@@ -43,9 +40,8 @@ O lançador verifica e avisa se estiver faltando. Para instalar:
 | **Ubuntu/Debian** | `sudo apt install python3 python3-venv` |
 | **Fedora** | `sudo dnf install python3` |
 
-Para o uso normal, não é preciso nada além disso e nenhuma biblioteca precisa
-ser instalada à mão. Somente o arquivamento automático no Drive exige Docker e
-Google Drive para computador.
+Não é preciso nada além disso: nenhuma biblioteca precisa ser instalada à mão e
+o Docker é opcional (ver a seção 6).
 
 ### 2.2 Windows — `iniciar.bat`
 
@@ -60,19 +56,14 @@ Google Drive para computador.
 > é um arquivo de texto — você pode abri-lo no Bloco de Notas e ler tudo o que ele
 > faz antes de executar.
 
-### 2.3 macOS — `iniciar.command`
+### 2.3 macOS — `iniciar.sh`
 
 1. Descompacte o `.zip`.
-2. Dê duplo clique em **`iniciar.command`**.
-3. Se o macOS bloquear o arquivo na primeira vez, clique com o botão direito,
-   escolha **Abrir** e confirme.
-
-O ZIP gerado por `gerar-entrega.bat` preserva a permissão de execução desse
-arquivo. Como alternativa, abra um Terminal na pasta e execute:
-
-```bash
-bash iniciar.sh
-```
+2. Abra um Terminal na pasta do projeto e execute:
+   ```bash
+   bash iniciar.sh
+   ```
+3. O navegador abre sozinho no aplicativo.
 
 ### 2.4 Linux — `iniciar.sh`
 
@@ -121,8 +112,8 @@ navegador não encerra o programa.
 
 ### 2.7 Para reabrir depois
 
-Basta dar duplo clique em `iniciar.bat` no Windows ou `iniciar.command` no
-macOS outra vez.
+Basta dar duplo clique em `iniciar.bat` no Windows, ou rodar `./iniciar.sh`
+outra vez no Linux/macOS.
 
 ---
 
@@ -182,12 +173,6 @@ consumidos e custo estimado** da inferência.
 - **Explicar para o paciente** — reescreve o relatório em linguagem simples.
 - **Baixar PDF** — exporta o relatório completo.
 - **Histórico** — na barra lateral, guarda os relatórios gerados na sessão.
-
-O envio automático para o Google Drive é opcional e não utiliza uma conta
-pré-configurada no projeto. Para fazer com que os PDFs sejam enviados ao Drive
-da própria pessoa que está testando, siga
-[`12-drive-automatico.md`](12-drive-automatico.md). Sem essa configuração, o
-botão **Baixar PDF** continua disponível normalmente.
 
 ---
 
@@ -287,10 +272,9 @@ inicializador. Ele reconstrói o ambiente.
 | Relatório técnico (entregável) | [`07-relatorio-tecnico.md`](07-relatorio-tecnico.md) |
 | Arquitetura da solução | [`04-arquitetura-solucao.md`](04-arquitetura-solucao.md) |
 | Benchmark dos modelos | [`06-benchmark-llm-multimodal.md`](06-benchmark-llm-multimodal.md) |
-| Automação com n8n (desafio extra) | [`09-integracao-n8n.md`](09-integracao-n8n.md) |
-| Envio automático para o Drive do avaliador | [`12-drive-automatico.md`](12-drive-automatico.md) |
 | Situação dos dados e o que é real vs. sintético | [`../data/README.md`](../data/README.md) |
-| Execução alternativa via Docker | [`../SETUP.md`](../SETUP.md) |
+| Setup manual do ambiente (venv, dados credenciados) | [`../SETUP.md`](../SETUP.md) |
+| Execução alternativa via Docker | [`../docker-compose.yml`](../docker-compose.yml) |
 
 Os testes automatizados podem ser executados com:
 
@@ -310,10 +294,8 @@ Os testes automatizados podem ser executados com:
 | Arquivo | Função |
 |---|---|
 | `iniciar.bat` | Lançador do Windows |
-| `iniciar.command` | Lançador de duplo clique do macOS |
 | `iniciar.sh` | Lançador de terminal do Linux/macOS |
-| `gerar-entrega.bat` | Gera o ZIP local incluindo `.env`, sem Git/venv/dados credenciados |
 | `abrir_navegador.py` | Abre o navegador quando o servidor começa a responder |
 | `COMO-EXECUTAR.md` | Início rápido, na raiz do projeto |
 
-Os três primeiros são arquivos de texto legíveis, e cada passo está comentado.
+Os dois lançadores são arquivos de texto legíveis, e cada passo está comentado.

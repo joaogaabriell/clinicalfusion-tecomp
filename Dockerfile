@@ -1,6 +1,6 @@
 # Imagem do app Streamlit (ver docker-compose.yml).
 # O dataset (data/) fica de fora da imagem -- entra em tempo de execucao via
-# bind mount, do mesmo jeito que o n8n.Dockerfile trata o codigo do projeto.
+# bind mount somente-leitura.
 FROM python:3.12-slim
 
 WORKDIR /app

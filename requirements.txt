@@ -1,8 +1,5 @@
 # ClinicalFusion — dependencias
 # Python >= 3.10 e < 3.13 (versoes validadas pelo projeto)
-#
-# ATENCAO: stack de referencia (sugestoes do enunciado). A stack final e as
-# versoes serao confirmadas pela equipe responsavel pela implementacao.
 
 # Interface
 # Fixada para o .bat e o Docker servirem os mesmos chunks JavaScript. Versoes

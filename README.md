@@ -30,8 +30,9 @@ Dataset multimodal com radiografias de tórax, ECGs, exames laboratoriais e dado
 Clinical-Fusion---TECOMP/
 ├── README.md                 # este arquivo
 ├── CONTRIBUTING.md           # fluxo de trabalho, branches e padrão de commits
-├── requirements.txt          # dependências (stack a ser confirmada pela equipe)
+├── requirements.txt          # dependências do projeto
 ├── .gitignore                # protege dados credenciados de irem ao GitHub
+├── iniciar.bat / iniciar.sh  # lançadores de um clique (Windows / Linux-macOS)
 ├── docs/                     # documentação
 │   ├── 01-estudo-dataset-symile-mimic.md
 │   ├── 02-organizacao-modalidades.md
@@ -41,20 +42,19 @@ Clinical-Fusion---TECOMP/
 │   ├── 06-benchmark-llm-multimodal.md   # ambiente de benchmark (Semana 2/3)
 │   ├── 07-relatorio-tecnico.md          # relatório técnico (entregável)
 │   ├── 08-apresentacao.md               # roteiro de slides
-│   ├── 09-integracao-n8n.md             # automação (desafio extra)
-│   ├── 10-roteiro-video.md              # roteiro do vídeo demonstrativo (entregável)
-│   ├── 11-manual-de-uso.md              # execução e uso da interface
-│   └── 12-drive-automatico.md            # configuração opcional por avaliador
+│   └── 09-manual-de-uso.md              # execução e uso da interface
 ├── data/                     # dados (reais ficam locais/ignorados; ver data/README.md)
 ├── src/                      # código-fonte da aplicação
 │   ├── config.py             # caminhos, specs das modalidades, metadados do MIMIC
 │   ├── symile_source.py      # leitura do Symile-MIMIC bruto (credenciado)
 │   ├── mock.py               # geradores sintéticos (ECG e placeholder de radiografia)
 │   ├── build_subset.py       # monta o subconjunto uma-pasta-por-paciente
+│   ├── demo_subset.py        # subconjunto fictício do modo demonstração
 │   ├── loaders.py            # leitura do subconjunto (usado pela interface)
 │   ├── augmentation.py       # augmentation das radiografias reais (preserva CheXpert)
 │   ├── export_pdf.py         # exportação do relatório em PDF (extra)
-│   ├── gerar_relatorio.py    # CLI: gera o relatório de um caso em JSON (n8n/cron)
+│   ├── gerar_relatorio.py    # CLI: gera o relatório de um caso em JSON
+│   ├── exportar_pdf.py       # CLI: mesmo relatório, já entregue como PDF em disco
 │   ├── llm/                  # orquestração LangChain: prompt, relatório, provedores, custo
 │   └── benchmark/            # benchmark ancorado no CheXpert (F1, latência, custo)
 ├── app/                      # interface em Streamlit
@@ -93,7 +93,7 @@ Clinical-Fusion---TECOMP/
 
 **Requisitos:** RF01–RF10 implementados. **Extras (+20%):** comparação de LLMs
 (benchmark), painel de métricas (tempo/custo), tradução para o paciente, PDF,
-comparação de 2 casos, histórico e ponto de entrada para n8n. Detalhes no
+comparação de 2 casos e histórico. Detalhes no
 [relatório técnico](docs/07-relatorio-tecnico.md).
 
 ---
@@ -133,18 +133,24 @@ python -m streamlit run app/streamlit_app.py
 
 O protótipo abre em <http://localhost:8501>. Detalhes em [`app/README.md`](app/README.md).
 
-### Arquivamento automático no Google Drive
-
-O projeto não inclui conta nem credencial do Google Drive. Por padrão, o
-relatório aparece na tela e pode ser baixado em PDF. Para arquivar cada relatório
-automaticamente no Drive da própria pessoa que está testando, siga a seção de
-configuração em [`docs/12-drive-automatico.md`](docs/12-drive-automatico.md).
-
-Esse recurso usa o n8n para gravar em uma pasta local e o Google Drive para
-computador para sincronizá-la. Não exige Google Cloud, Client ID, Client Secret
-ou service account.
-
 > 🔒 O passo 2 exige **credenciamento no PhysioNet** — cada integrante baixa a própria cópia. A licença do dataset **proíbe compartilhar os dados**, inclusive entre a equipe e em repositório privado. Ver [`SETUP.md`](SETUP.md) e [`data/README.md`](data/README.md).
+
+### Sem digitar comandos
+
+`iniciar.bat` (Windows) ou `./iniciar.sh` (Linux/macOS) preparam a `.venv`,
+instalam as dependências e abrem o navegador sozinhos. É o caminho descrito em
+[`COMO-EXECUTAR.md`](COMO-EXECUTAR.md) e no
+[manual de uso](docs/09-manual-de-uso.md).
+
+### Execução via Docker (alternativa)
+
+```bash
+cp .env.example .env               # e ajuste GOOGLE_API_KEY
+docker compose up -d --build
+```
+
+Sobe o app em <http://localhost:8501>. A pasta `data/` entra por bind mount
+somente-leitura; sem subconjunto real, o modo demonstração assume.
 
 **Modo demonstração (sem chave de API):**
 
@@ -156,7 +162,7 @@ $env:CLINICALFUSION_DEMO = "1"
 python -m streamlit run app/streamlit_app.py
 ```
 
-Isso adiciona o modelo `demo` ao seletor. O conteúdo é um texto fixo do [`src/llm/demo_client.py`](src/llm/demo_client.py), marcado com `[SIMULADO]` em todos os campos — **nenhum modelo é consultado** e os achados radiológicos não correspondem à imagem. Sem a variável, o modo não aparece em lugar nenhum; ele também fica fora do benchmark, que não deve comparar um texto fixo com modelos reais.
+Isso adiciona o modelo `demo` ao seletor. O conteúdo vem de [`src/llm/demo_client.py`](src/llm/demo_client.py) — um molde de texto fixo com achados radiológicos **pseudoaleatórios** (derivados de um hash do prompt), marcado com `[SIMULADO]` em todos os campos — **nenhum modelo é consultado** e os achados radiológicos não correspondem à imagem. Sem a variável, o modo não aparece em lugar nenhum; ele também fica fora do benchmark, que não deve comparar um texto fixo com modelos reais.
 
 **Testes:**
 

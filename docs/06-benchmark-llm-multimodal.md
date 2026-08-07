@@ -11,12 +11,15 @@
 O ambiente vive em dois pacotes:
 
 - **`src/llm/`** — camada de integração com os LLMs, **orquestrada por LangChain**.
-  Fronteira única entre a aplicação e os provedores: OpenAI, Google (Gemini) e
-  Anthropic (Claude). Um único cliente (`ClienteLangChain`) usa o chat model do
-  LangChain de cada provedor (`ChatOpenAI`, `ChatGoogleGenerativeAI`,
-  `ChatAnthropic`): a mensagem multimodal é montada uma vez no formato comum do
-  LangChain e a mesma invocação serve para todos. Tudo por trás da interface
-  `ClienteLLM.gerar`, então trocar de modelo não muda nenhuma assinatura.
+  Fronteira única entre a aplicação e o provedor. O catálogo de produção é
+  **somente Gemini** (decisão da equipe, ver
+  [`04-arquitetura-solucao.md`](04-arquitetura-solucao.md)): um único cliente
+  (`ClienteLangChain`) monta a mensagem multimodal no formato comum do LangChain
+  e invoca o `ChatGoogleGenerativeAI`. O código permanece *provider-agnostic* —
+  reativar OpenAI ou Anthropic é re-adicionar a fábrica correspondente e a
+  dependência `langchain-openai`/`langchain-anthropic`. Tudo por trás da
+  interface `ClienteLLM.gerar`, então trocar de modelo não muda nenhuma
+  assinatura.
 - **`src/benchmark/`** — compara os modelos na tarefa central do projeto (gerar o
   relatório clínico estruturado) e pontua objetivamente os achados radiológicos.
 
@@ -26,10 +29,9 @@ Fluxo de uma avaliação:
 flowchart LR
     A[Caso<br/>4 modalidades] --> B[montar_prompt<br/>src/llm/prompt.py]
     B --> C{ClienteLangChain<br/>orquestracao}
-    C -->|OpenAI| D[GPT-4o / 4.1]
-    C -->|Google| E[Gemini 2.5]
-    C -->|Anthropic| F[Claude Opus/Sonnet]
-    D & E & F --> G[RelatorioClinico<br/>JSON estruturado]
+    C -->|Google| E[Gemini 3.5 Flash / Flash-Lite / Pro]
+    C -->|sem chave| F[Cliente demonstracao<br/>relatorio SIMULADO]
+    E & F --> G[RelatorioClinico<br/>JSON estruturado]
     G --> H[avaliar_caso<br/>vs ground-truth CheXpert]
     H --> I[F1 / precisão / recall<br/>latência / tokens / completude]
 ```
@@ -83,7 +85,8 @@ rotulado como `positivo`/`negativo`. Esse é o **ground-truth**. Para cada model
   sobre todos os pares `(caso, achado)` rotulados. **F1 é a métrica principal.**
 - **Acurácia** dos achados avaliados.
 - **Completude** do relatório textual (fração dos campos do RF09 preenchidos).
-- **Latência** média e **tokens** de entrada/saída (proxy de custo).
+- **Latência** média, **tokens** de entrada/saída e **custo médio estimado** em
+  USD (tokens × tabela de preços de `src/llm/catalogo.py`).
 - **Falhas** de formato (respostas que não viraram JSON válido).
 
 ---
@@ -94,53 +97,59 @@ rotulado como `positivo`/`negativo`. Esse é o **ground-truth**. Para cada model
 # 1. ver o catálogo e quais chaves faltam
 python -m src.benchmark.runner --listar
 
-# 2. rodar a comparação (um modelo por provedor, por padrão)
+# 2. rodar a comparação (CHAVES_PADRAO: gemini-flash-lite e gemini-flash)
 python -m src.benchmark.runner
 
 # variações úteis
 python -m src.benchmark.runner --com-aug              # inclui as variações aumentadas
 python -m src.benchmark.runner --limite 20            # só 20 amostras (teste rápido/barato)
-python -m src.benchmark.runner --modelos claude-opus gpt-4o gemini-flash
+python -m src.benchmark.runner --modelos gemini-flash-lite gemini-flash gemini-pro
 ```
 
 Resultados em `benchmark_resultados/` (ignorado pelo Git):
 `relatorio.md` (tabela comparativa), `resumo.csv` e `respostas_<modelo>.json`.
 
-> **Sem chaves configuradas, nada roda** — o ambiente fica pronto e o benchmark
-> apenas reporta o que falta. Assim dá para preparar tudo antes de ter as chaves.
+> **Sem chave configurada, nada roda** — o ambiente fica pronto e o benchmark
+> apenas reporta o que falta. Assim dá para preparar tudo antes de ter a chave.
 
 ---
 
-## 6. Modelos e chaves de API necessárias
+## 6. Modelos e chave de API necessária
 
-Preencha no `.env` (ver [`../.env.example`](../.env.example)) **apenas** os
-provedores que for usar; um modelo sem chave é pulado.
+Preencha no `.env` (ver [`../.env.example`](../.env.example)). Um modelo sem
+chave é pulado.
 
-| Provedor | Variável de ambiente | Modelos no catálogo | Onde obter |
-|----------|----------------------|---------------------|------------|
-| OpenAI | `OPENAI_API_KEY` | `gpt-4o`, `gpt-4.1` | <https://platform.openai.com/api-keys> |
-| Google | `GOOGLE_API_KEY` | `gemini-2.5-flash`, `gemini-2.5-pro` | <https://aistudio.google.com/apikey> |
-| Anthropic | `ANTHROPIC_API_KEY` | `claude-opus-4-8`, `claude-sonnet-5` | <https://console.anthropic.com/settings/keys> |
+| Provedor | Variável de ambiente | Chaves no catálogo | Modelo real | Onde obter |
+|----------|----------------------|--------------------|-------------|------------|
+| Google | `GOOGLE_API_KEY` | `gemini-flash-lite` | `gemini-3.5-flash-lite` | <https://aistudio.google.com/apikey> |
+| Google | `GOOGLE_API_KEY` | `gemini-flash` | `gemini-3.5-flash` | idem |
+| Google | `GOOGLE_API_KEY` | `gemini-pro` | `gemini-pro-latest` | idem |
+| — (simulado) | `CLINICALFUSION_DEMO` | `demo` | não chama API | — |
+
+O modelo `demo` fica **fora** de `CHAVES_PADRAO` de propósito: comparar um
+molde de texto com modelos reais não produz informação útil.
 
 Adicionar um modelo ao benchmark é **adicionar uma linha** em
-`src/llm/catalogo.py` — nada mais muda.
+`src/llm/catalogo.py` — nada mais muda. Reativar OpenAI ou Anthropic exige
+também a fábrica correspondente em `src/llm/langchain_client.py` e a dependência
+`langchain-openai`/`langchain-anthropic`.
 
 ---
 
-## 7. Recomendação de modelo (a confirmar pelo benchmark)
+## 7. Recomendação de modelo
 
-A decisão final sai dos números, mas a hipótese de partida — para uma tarefa de
-**raciocínio clínico multimodal com saída estruturada e rubrica** — é:
+O catálogo de produção é **somente Gemini**: manter três caminhos de provedor
+sem cobertura de teste ao vivo custaria mais do que entrega. Dentro do Gemini, a
+recomendação sai dos números do `relatorio.md`, por **F1 × latência × custo**:
 
-1. **Claude Opus 4.8** (`claude-opus-4-8`) como principal: visão forte e ótimo em
-   seguir esquema estruturado e justificar conclusões — o que o RF09 exige.
-2. **Gemini 2.5 Flash** como alternativa de **custo-benefício**: multimodal
-   competente e barato para o volume de casos.
-3. **GPT-4o** como baseline de referência amplamente validado.
+1. **`gemini-flash-lite`** como padrão do projeto — mais barato e com cota
+   separada, é o que a interface pré-seleciona.
+2. **`gemini-flash`** quando a qualidade do texto pesar mais que o custo.
+3. **`gemini-pro`** como teto de qualidade, para conferir se o flash está
+   deixando algo na mesa; caro demais para o volume do benchmark.
 
-Rode o benchmark com as três chaves e deixe o `relatorio.md` decidir por
-**F1 × latência × custo**. Para produção com muitos casos, se um modelo mais
-barato empatar em F1 com o topo de linha, ele passa a ser a escolha racional.
+Se um modelo mais barato empatar em F1 com o de cima, ele passa a ser a escolha
+racional — é exatamente essa decisão que o benchmark automatiza.
 
 ---
 
@@ -153,5 +162,6 @@ barato empatar em F1 com o topo de linha, ele passa a ser a escolha racional.
   humana — para a Semana 4, vale uma rubrica qualitativa revisada por pessoa.
 - O **ECG** é mock e é declarado como indisponível no prompt, para o modelo não
   inventar laudo de ECG.
-- Custo real de API depende de preço por token de cada provedor; o benchmark
-  registra os tokens, mas não converte em moeda.
+- O **custo em USD é uma estimativa local** (tokens × preços de
+  `src/llm/catalogo.py`), não uma consulta à fatura do provedor. Os preços são
+  públicos, aproximados e editáveis.

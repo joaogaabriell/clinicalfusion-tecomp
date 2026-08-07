@@ -106,7 +106,7 @@ Equipe · Disciplina de Tópicos Especiais
 ## 10. Requisitos e extras
 
 - **RF01–RF10**: todos implementados.
-- Extras entregues: comparação de LLMs, painel de métricas (tempo/custo), tradução para o paciente, PDF, comparação de 2 casos, histórico, integração com n8n (arquivamento automático do PDF via webhook).
+- Extras entregues: comparação de LLMs, painel de métricas (tempo/custo), tradução para o paciente, PDF, comparação de 2 casos e histórico da sessão.
 - Não implementado: explicação visual dos achados na radiografia (bounding boxes).
 
 🎙️ Destacar que a comparação de LLMs (benchmark + comparação manual) já garante parte do +20%.
@@ -124,7 +124,7 @@ Python · Streamlit · Pandas · Pillow · Matplotlib · **LangChain** · Google
 ## 12. Limitações e próximos passos
 
 - Ground-truth **parcial** (só cobre casos com radiografia real); ECG **mock**; quota/custo de API.
-- Próximos: rubrica humana da qualidade textual e explicação visual dos achados. A automação via n8n já está implementada; para sincronizar com o Drive, cada avaliador configura a própria pasta local conforme `docs/12-drive-automatico.md`.
+- Próximos: rubrica humana da qualidade textual e explicação visual dos achados na radiografia.
 
 🎙️ Ser honesto sobre limites — é um projeto educacional.
 

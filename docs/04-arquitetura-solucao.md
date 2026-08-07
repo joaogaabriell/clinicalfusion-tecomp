@@ -43,8 +43,9 @@ distribuído em arquivos (uma pasta por paciente), e `src/loaders.py` é a
   do catálogo na tarefa central, pontuando os achados radiológicos contra o
   ground-truth CheXpert (F1, latência, tokens, custo, completude).
 - **Exportação** (`src/export_pdf.py`) — relatório em PDF (desafio extra).
-- **Automação** (`src/gerar_relatorio.py`, `src/n8n.py`) — ponto de entrada
-  CLI (JSON em stdout) para o n8n gerar/arquivar relatórios fora da interface.
+- **Automação** (`src/gerar_relatorio.py`, `src/exportar_pdf.py`) — pontos de
+  entrada CLI para gerar o relatório de um caso fora da interface: um devolve
+  JSON no stdout, o outro já grava o PDF em disco.
 - **Interface** (`app/streamlit_app.py`, `app/dados.py`) — exibição do caso
   (Dados clínicos, Radiografia, ECG, Laboratório), chat com memória,
   relatório com um clique + painel de evidências, comparação de dois casos e
@@ -65,9 +66,6 @@ flowchart TD
     G --> I[Benchmark + métricas CheXpert<br/>src/benchmark]
     H -->|nova pergunta| C
 ```
-
-> Diagrama exportado em alta resolução em
-> [`../documentacao-te/diagramas/01-arquitetura.png`](../documentacao-te/diagramas/01-arquitetura.png).
 
 ## 4. Fluxo de comunicação entre os componentes
 

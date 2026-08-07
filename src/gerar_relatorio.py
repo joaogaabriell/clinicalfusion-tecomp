@@ -2,8 +2,8 @@
 Ponto de entrada de linha de comando: gera o relatorio clinico de um caso e o
 imprime em JSON no stdout.
 
-Serve para automacao (ex.: n8n via no "Execute Command", ou um cron): recebe o
-paciente e o modelo, e devolve o relatorio estruturado + telemetria.
+Serve para automacao e geracao em lote (ex.: um cron ou um script proprio):
+recebe o paciente e o modelo, e devolve o relatorio estruturado + telemetria.
 
 A pergunta e OPCIONAL -- sem ela o modelo faz a analise completa do caso, que e
 o mesmo fluxo da interface. Passe --pergunta so para orientar o recorte.

@@ -118,10 +118,9 @@ flowchart TD
     A[Subconjunto Symile-MIMIC] --> B[Leitura das modalidades<br/>src/loaders.py]
     B --> C[Construção do prompt multimodal<br/>src/llm/prompt.py]
     C --> D[Orquestração LangChain<br/>src/llm/langchain_client.py]
-    D -->|OpenAI| E[GPT-4o / 4.1]
-    D -->|Google| F[Gemini]
-    D -->|Anthropic| G[Claude]
-    E & F & G --> H[Relatório estruturado JSON<br/>src/llm/relatorio.py]
+    D -->|Google| F[Gemini 3.5 Flash / Flash-Lite / Pro]
+    D -->|sem chave| G[Cliente demonstração<br/>relatório SIMULADO]
+    F & G --> H[Relatório estruturado JSON<br/>src/llm/relatorio.py]
     H --> I[Interface Streamlit<br/>app/streamlit_app.py]
     H --> J[Benchmark + métricas CheXpert<br/>src/benchmark]
     I -->|nova pergunta| C
@@ -133,9 +132,9 @@ flowchart TD
 |--------|--------|------------------|
 | Dados | `src/config.py`, `src/symile_source.py`, `src/build_subset.py`, `src/loaders.py` | Ler o Symile-MIMIC bruto, montar e ler o subconjunto |
 | Mock/Augmentation | `src/mock.py`, `src/augmentation.py` | Gerar ECG sintético e placeholder de CXR; aumentar as CXR reais |
-| LLM | `src/llm/prompt.py`, `relatorio.py`, `langchain_client.py`, `catalogo.py`, `extras.py` | Prompt multimodal, esquema do relatório, orquestração dos provedores, catálogo/preços, versão para o paciente |
+| LLM | `src/llm/prompt.py`, `relatorio.py`, `langchain_client.py`, `catalogo.py`, `chat.py`, `extras.py`, `demo_client.py` | Prompt multimodal, esquema do relatório, orquestração do provedor, catálogo/preços, chat com memória, versão para o paciente, cliente simulado |
 | Benchmark | `src/benchmark/metricas.py`, `runner.py` | Métricas ancoradas no CheXpert, execução comparativa |
-| Exportação | `src/export_pdf.py` | Relatório em PDF |
+| Exportação | `src/export_pdf.py`, `src/exportar_pdf.py` | Relatório em PDF (biblioteca + CLI) |
 | Interface | `app/streamlit_app.py`, `app/dados.py` | Exibição do caso, chat, evidências, comparação, histórico |
 
 A separação em camadas com uma **fronteira estável** (`ClienteLLM.gerar` →
@@ -145,10 +144,15 @@ no benchmark.
 ## 6. Integração com o LLM multimodal (LangChain)
 
 A orquestração usa **LangChain**: um único `ClienteLangChain` instancia o chat
-model de cada provedor (`ChatOpenAI`, `ChatGoogleGenerativeAI`, `ChatAnthropic`).
-A mensagem multimodal (system + texto + imagem em `data:` URI) é montada **uma
-vez** no formato comum do LangChain e a mesma invocação (`chat.invoke`) serve
-para todos. Trocar de modelo é trocar a fábrica do chat model — nada mais.
+model do provedor (`ChatGoogleGenerativeAI`). A mensagem multimodal (system +
+texto + imagem em `data:` URI) é montada **uma vez** no formato comum do
+LangChain e a mesma invocação (`chat.invoke`) serve para qualquer modelo. Trocar
+de modelo é trocar a fábrica do chat model — nada mais.
+
+A equipe decidiu concentrar o catálogo **apenas no Gemini**, para não manter três
+caminhos de provedor sem cobertura de teste ao vivo. O cliente continua
+*provider-agnostic*: reativar OpenAI ou Anthropic é re-adicionar a fábrica em
+`src/llm/langchain_client.py` e a dependência correspondente.
 
 Detalhes técnicos relevantes descobertos na integração:
 
@@ -163,6 +167,10 @@ Detalhes técnicos relevantes descobertos na integração:
 - **Chaves**: lidas de `os.environ` via `config.carregar_env()`, que carrega o
   `.env` (ignorando comentários inline). Um provedor sem chave é simplesmente
   pulado.
+- **Sem chave nenhuma**: `src/llm/demo_client.py` assume, devolvendo um molde de
+  texto marcado com `[SIMULADO]` e achados pseudoaleatórios derivados de um hash
+  do prompt. Ele percorre o mesmo caminho de parsing de um cliente real, então a
+  demonstração exercita o código de verdade — só a inferência é falsa.
 
 ## 7. Engenharia de prompt e relatório estruturado
 
@@ -220,8 +228,8 @@ ambiente reporta o que falta.
 **Resultado validado (amostra):** uma inferência real do `gemini-3.5-flash` no
 `patient_0001` produziu relatório coerente e **inteiramente em português**
 (resumo, hipóteses e exames traduzidos), em ~14 s, ~2.295/767 tokens, custo
-estimado ~US$ 0,0026. A tabela comparativa completa depende de ≥2 provedores com
-quota/crédito ativos (ver §12).
+estimado ~US$ 0,0026. A tabela comparativa completa depende de crédito ativo na
+chave do Gemini para rodar os três modelos do catálogo (ver §12).
 
 ## 9. Interface (Streamlit) e requisitos funcionais
 
@@ -269,7 +277,6 @@ Cobertura dos requisitos:
 | Comparação entre dois casos clínicos | ✅ | aba "Comparar 2 casos" |
 | Histórico de casos analisados | ✅ | histórico da sessão na barra lateral |
 | Explicação visual dos achados | ➖ | depende de bounding boxes do modelo — não implementado |
-| Integração com n8n | ✅ | arquivamento do PDF em pasta local, opcionalmente sincronizada com o Drive da pessoa que estiver testando |
 
 ## 11. Análise das tecnologias
 
@@ -280,14 +287,14 @@ Cobertura dos requisitos:
 | Dados | Pandas | Pandas | Tabelas de laboratório e índice |
 | Imagem | Pillow/OpenCV | **Pillow** | Suficiente para carregar/augmentar CXR sem o peso do OpenCV |
 | Visualização | Matplotlib | Matplotlib | Traçado do ECG sobre papel milimetrado |
-| LLM | GPT-4o / Gemini / Qwen / Llama | **GPT-4o, Gemini, Claude** | Provedores com API multimodal estável; Claude adicionado por força em saída estruturada |
-| Framework | LangChain (opcional) | **LangChain** | Orquestração uniforme entre os três provedores |
+| LLM | GPT-4o / Gemini / Qwen / Llama | **Gemini** (3.5 Flash-Lite, 3.5 Flash, Pro) | API multimodal estável, saída estruturada confiável e custo compatível com o volume; um só provedor mantém todo o catálogo coberto por teste ao vivo |
+| Framework | LangChain (opcional) | **LangChain** | Orquestração uniforme; mantém o código independente de provedor mesmo com um só ativo |
 | Versionamento | GitHub | GitHub + git-flow | `main ← develop ← feature/*` |
 
-**Recomendação de modelo:** para raciocínio clínico multimodal com saída
-estruturada, a hipótese de partida é **Claude Opus 4.8** (principal), **Gemini
-Flash** (custo-benefício) e **GPT-4o** (baseline). A decisão final sai do
-benchmark, por **F1 × latência × custo**.
+**Recomendação de modelo:** dentro do Gemini, o padrão do projeto é o
+**`gemini-flash-lite`** (mais barato, cota separada), com **`gemini-flash`**
+quando a qualidade do texto pesar mais que o custo e **`gemini-pro`** como teto
+de qualidade. A decisão sai do benchmark, por **F1 × latência × custo**.
 
 ## 12. Limitações e riscos
 
@@ -297,8 +304,12 @@ benchmark, por **F1 × latência × custo**.
 - **ECG mock:** referenciado no prompt, mas marcado como sintético — o modelo é
   instruído a não laudá-lo.
 - **Custo/quota de API:** contas free-tier esgotam quota (429) e ficam
-  indisponíveis (503); a comparação entre modelos exige ≥2 provedores com
-  crédito. Os preços do catálogo são **aproximados** e editáveis.
+  indisponíveis (503); a comparação entre os três modelos exige crédito ativo na
+  chave. Os preços do catálogo são **aproximados** e editáveis, e o custo
+  exibido é estimado localmente, não consultado na fatura.
+- **Provedor único:** com só o Gemini no catálogo, a comparação entre modelos
+  acontece dentro de uma mesma família — o benchmark mede custo-benefício, não
+  diferença entre arquiteturas de provedores distintos.
 - **Completude é um proxy automático** da qualidade textual, não avaliação
   humana — uma rubrica revisada por pessoa é recomendada para a Semana 4.
 
@@ -329,4 +340,4 @@ extras (custo, PDF, versão para o paciente, comparação de casos, histórico).
 arquitetura em camadas, com uma fronteira estável entre a aplicação e os
 provedores, torna o sistema fácil de estender — trocar de modelo, adicionar um
 provedor ou substituir um dado mock por real não muda as assinaturas do código.
-A cobertura de **80 testes automatizados** sustenta a evolução com segurança.
+A cobertura de **104 testes automatizados** sustenta a evolução com segurança.

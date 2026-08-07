@@ -70,7 +70,7 @@ Commits devem ser **atômicos** (uma mudança lógica por commit) e feitos **na 
 - Descreva **o que** foi feito e **por quê**.
 - Relacione o item da entrega correspondente (ex.: "Item 3 — Leitura e Visualização").
 - Aguarde revisão de pelo menos um colega antes do merge.
-- O **CI** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) roda sozinho no push e no PR: suíte de testes em Python 3.10 e 3.12, `ruff` (só erros que quebram execução), validação do compose do n8n e a checagem de que nenhum dado do dataset ou chave de API entrou no repositório. Merge só com o CI verde — se ele reprovar por dados versionados, **não force**: leia a seção de dados sensíveis abaixo.
+- O **CI** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) roda sozinho no push e no PR: suíte de testes em Python 3.10 e 3.12, `ruff` (só erros que quebram execução), validação do `docker-compose.yml` e a checagem de que nenhum dado do dataset ou chave de API entrou no repositório. Merge só com o CI verde — se ele reprovar por dados versionados, **não force**: leia a seção de dados sensíveis abaixo.
 
 ---
 

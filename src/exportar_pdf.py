@@ -3,8 +3,8 @@ Ponto de entrada de linha de comando: gera o relatorio clinico de um caso e
 tambem exporta o PDF, imprimindo o resultado combinado em JSON no stdout.
 
 Reusa gerar_relatorio.gerar() para nao duplicar a chamada ao LLM. Pensado para
-automacao (ex.: n8n via "Execute Command") como alternativa a gerar_relatorio
-quando o destino final e um arquivo PDF (ex.: upload para Google Drive).
+automacao, como alternativa a gerar_relatorio quando o destino final e um
+arquivo PDF em disco.
 
 A pergunta e OPCIONAL, como em gerar_relatorio: sem ela o modelo faz a analise
 completa do caso.

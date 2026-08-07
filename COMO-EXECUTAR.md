@@ -7,13 +7,10 @@ sozinho.
 
 ## Linux / macOS
 
-No macOS, dê duplo clique em **`iniciar.command`**. Se o sistema bloquear na
-primeira vez, clique com o botão direito, escolha **Abrir** e confirme.
-
-Também é possível usar o Terminal, dentro desta pasta:
+No Terminal, dentro desta pasta:
 
 ```bash
-./iniciar.sh
+./iniciar.sh          # se recusar por permissão: bash iniciar.sh
 ```
 
 O navegador abre sozinho.
@@ -28,24 +25,10 @@ O navegador abre sozinho.
   computador. Depois, abre em segundos.
 - **Para encerrar:** feche a janela do terminal (fechar a aba do navegador não basta).
 
-## Preparar o ZIP para entrega
-
-No computador de quem vai enviar, dê duplo clique em **`gerar-entrega.bat`**.
-O arquivo `dist/ClinicalFusion-entrega.zip` inclui o `.env` local e a pasta
-`secrets/`, quando existirem, mas exclui `.git`, `.venv`, caches e dados
-credenciados do Symile-MIMIC.
-
-O `.env` pode conter a chave do Gemini para a demonstração, mas continua ignorado
-pelo Git. Compartilhe esse ZIP somente com a professora e revogue a chave depois
-da avaliação.
-
 ---
 
 📖 **Manual completo — o que fazer em cada tela, como gerar o relatório e o que
-fazer se algo der errado:** [`docs/11-manual-de-uso.md`](docs/11-manual-de-uso.md)
-
-☁️ **Opcional — arquivar automaticamente no Drive de quem estiver testando:**
-[`docs/12-drive-automatico.md`](docs/12-drive-automatico.md)
+fazer se algo der errado:** [`docs/09-manual-de-uso.md`](docs/09-manual-de-uso.md)
 
 ⚠️ Ferramenta com finalidade **exclusivamente educacional**. Não realiza
 diagnóstico médico.
