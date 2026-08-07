@@ -1,11 +1,14 @@
 # ClinicalFusion — dependencias
-# Python >= 3.10
+# Python >= 3.10 e < 3.13 (versoes validadas pelo projeto)
 #
 # ATENCAO: stack de referencia (sugestoes do enunciado). A stack final e as
 # versoes serao confirmadas pela equipe responsavel pela implementacao.
 
 # Interface
-streamlit>=1.36
+# Fixada para o .bat e o Docker servirem os mesmos chunks JavaScript. Versoes
+# diferentes no mesmo localhost deixam o navegador com imports dinamicos de
+# uma instalacao anterior (por exemplo, DataFrame.<hash>.js).
+streamlit==1.60.0
 
 # Manipulacao de dados
 pandas>=2.0
@@ -29,6 +32,9 @@ pytest>=8.0
 # Orquestracao via LangChain: um chat model por provedor, mesma invocacao.
 # Importados de forma preguicosa: instale so os provedores que for usar.
 langchain-core>=0.3
-langchain-google-genai>=2.1  # Gemini -- unico provedor usado pelo projeto
+langchain-google-genai==4.3.2  # Gemini -- unico provedor usado pelo projeto
+# 2.17.0 interpreta as chaves novas `AQ.*` como token OAuth e devolve 401
+# ACCESS_TOKEN_TYPE_UNSUPPORTED. Em 2.16.0 a mesma chave e enviada como API key.
+google-genai==2.16.0
 # langchain-openai / langchain-anthropic sairam junto com os ramos removidos de
 # src/llm/langchain_client.py; reinstale se algum dia reativar esses provedores.

@@ -38,6 +38,10 @@ data/demo/
 # localmente; podem conter texto de saida dos modelos).
 benchmark_resultados/
 
+# PDFs arquivados localmente pelo n8n quando nenhuma pasta sincronizada externa
+# foi escolhida.
+relatorios/
+
 # -------------------------------------------------------------------------
 #  Python
 # -------------------------------------------------------------------------
@@ -54,6 +58,7 @@ dist/
 
 # Ambientes virtuais
 .venv/
+.venv-*/
 venv/
 env/
 ENV/
@@ -64,6 +69,7 @@ ENV/
 .streamlit/secrets.toml
 .env
 *.key
+secrets/
 
 # -------------------------------------------------------------------------
 #  Editores / SO

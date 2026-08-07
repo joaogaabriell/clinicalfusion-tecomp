@@ -76,6 +76,9 @@ jobs:
       - name: Compilar interface e pacote
         run: python -m compileall -q app src
 
+      - name: Validar launchers Unix e macOS
+        run: bash -n iniciar.sh iniciar.command n8n/entrypoint.sh
+
       # A licenca do Symile-MIMIC proibe redistribuir os dados. Um `git add -A`
       # distraido em data/ vazaria o dataset no repositorio publico -- este
       # passo transforma isso em falha de CI, nao em problema juridico.
@@ -104,3 +107,22 @@ jobs:
 
       - name: Validar o compose (app + n8n)
         run: docker compose -f docker-compose.yml config -q
+
+  lancador-windows:
+    name: Lançador Windows
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Preparar pelo iniciar.bat
+        shell: cmd
+        env:
+          CLINICALFUSION_SOMENTE_PREPARAR: "1"
+        run: iniciar.bat

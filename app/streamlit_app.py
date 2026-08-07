@@ -18,6 +18,8 @@ Estrutura do arquivo:
 """
 
 import base64
+import html
+import io
 import sys
 from pathlib import Path
 
@@ -166,6 +168,50 @@ def figura_ecg(pid: str, derivacao: str, altura: float = 3.2):
     return fig
 
 
+@st.cache_data(show_spinner=False)
+def ecg_png(pid: str, derivacao: str, altura: float = 3.2) -> bytes:
+    """Renderiza o ECG como PNG estavel e libera a figura do Matplotlib."""
+    figura = figura_ecg(pid, derivacao, altura)
+    buffer = io.BytesIO()
+    try:
+        figura.savefig(
+            buffer,
+            format="png",
+            dpi=160,
+            bbox_inches="tight",
+            metadata={"Software": "ClinicalFusion"},
+        )
+    finally:
+        plt.close(figura)
+    return buffer.getvalue()
+
+
+@st.cache_data(show_spinner=False)
+def radiografia_png(pid: str) -> bytes:
+    """Converte a radiografia para PNG antes de embuti-la na pagina."""
+    buffer = io.BytesIO()
+    caso_cache(pid).radiografia.save(buffer, format="PNG")
+    return buffer.getvalue()
+
+
+def exibir_png(conteudo: bytes, alt: str, legenda: str | None = None) -> None:
+    """Exibe PNG em data URI, sem depender do armazenamento /media do Streamlit."""
+    origem = base64.b64encode(conteudo).decode("ascii")
+    legenda_html = (
+        f'<figcaption style="margin-top:.35rem;opacity:.7;font-size:.85rem">'
+        f"{html.escape(legenda)}</figcaption>"
+        if legenda
+        else ""
+    )
+    st.markdown(
+        '<figure style="margin:0;text-align:center">'
+        f'<img src="data:image/png;base64,{origem}" alt="{html.escape(alt)}" '
+        'style="display:block;width:100%;height:auto;border-radius:.35rem">'
+        f"{legenda_html}</figure>",
+        unsafe_allow_html=True,
+    )
+
+
 # ---------------------------------------------------------------- 4. RELATORIO (LLM)
 
 
@@ -185,7 +231,7 @@ def gerar_relatorio(caso, pergunta: str | None, candidato):
 
 def arquivar_no_drive(paciente_id: str, resposta, pergunta: str | None = None):
     """
-    Manda o PDF recem-gerado ao workflow do n8n, que arquiva no Google Drive.
+    Manda o PDF ao n8n, que grava na pasta local sincronizada pelo Drive.
 
     O PDF vai pronto (o n8n nao refaz a inferencia): o arquivo no Drive e
     exatamente o mesmo relatorio que esta na tela, sem uma segunda chamada paga.
@@ -242,7 +288,19 @@ def erro_amigavel(erro) -> str:
             "com um relatório simulado."
         )
     if any(t in baixo for t in ("resource_exhausted", "quota", " 429")):
-        if "insufficient" in baixo or "billing" in baixo or "plan" in baixo:
+        if any(
+            t in baixo
+            for t in (
+                "free_tier_requests",
+                "perdayperprojectpermodel",
+                "requests per day",
+            )
+        ):
+            return (
+                "A cota gratuita diária deste modelo foi esgotada. "
+                "Selecione `gemini-flash-lite` ou aguarde a renovação da cota."
+            )
+        if "prepayment credits are depleted" in baixo or "insufficient_quota" in baixo:
             return (
                 "A conta do provedor está sem crédito/billing ativo. "
                 "Adicione crédito ou use outro provedor."
@@ -564,10 +622,10 @@ else:
         col_img, col_info = st.columns([3, 2])
         with col_img:
             posicao = clinicos["radiografia"]["posicao"] or "—"
-            st.image(
-                caso.radiografia,
-                caption=f"Radiografia de tórax ({posicao})",
-                width="stretch",
+            exibir_png(
+                radiografia_png(selecao),
+                "Radiografia de tórax",
+                f"Radiografia de tórax ({posicao})",
             )
         with col_info:
             if caso.tem_radiografia_real:
@@ -602,7 +660,7 @@ else:
         col_b.metric("Derivações", len(dados.derivacoes()))
         col_c.metric("Duração", "10 s")
         col_d.metric("Amostragem", "500 Hz")
-        st.pyplot(figura_ecg(selecao, derivacao))
+        exibir_png(ecg_png(selecao, derivacao), f"ECG — derivação {derivacao}")
 
     with aba_lab:
         extremos = dados.exames_extremos(laboratorio)
@@ -747,7 +805,7 @@ else:
                         expanded=False,
                     )
                     if resposta.ok and n8n.url_webhook():
-                        st.write("Arquivando o PDF no Google Drive via n8n...")
+                        st.write("Arquivando o PDF na pasta sincronizada via n8n...")
                         st.session_state[f"drive_{selecao}"] = arquivar_no_drive(
                             selecao, resposta
                         )
@@ -780,13 +838,13 @@ else:
                 )
                 mcol[2].metric("Custo estimado", f"US$ {custo:.4f}")
 
-                # Resultado do arquivamento automático no Drive (via n8n).
+                # Resultado do arquivamento na pasta sincronizada (via n8n).
                 arquivado = st.session_state.get(f"drive_{selecao}")
                 if arquivado:
                     ok_drive, detalhe = arquivado
                     if ok_drive:
                         st.success(
-                            f"Arquivado no Google Drive: `{detalhe}`",
+                            f"Arquivado na pasta sincronizada: `{detalhe}`",
                             icon=":material/cloud_done:",
                         )
                     elif n8n.diagnostico_visivel():
@@ -794,7 +852,8 @@ else:
                         # arquivamento é silencioso: o relatório está na tela e o PDF
                         # é baixável, então o estado do n8n não lhe diz nada.
                         st.warning(
-                            f"O relatório foi gerado, mas não foi arquivado no Drive. {detalhe}",
+                            "O relatório foi gerado, mas não foi arquivado na pasta "
+                            f"sincronizada. {detalhe}",
                             icon=":material/cloud_off:",
                         )
 
@@ -835,9 +894,9 @@ else:
                 # RF10: as modalidades que sustentam a resposta ficam visíveis ao lado dela.
                 st.markdown("#### Exames utilizados na resposta")
                 with st.expander("Radiografia de tórax", expanded=True):
-                    st.image(caso.radiografia, width="stretch")
+                    exibir_png(radiografia_png(selecao), "Radiografia de tórax")
                 with st.expander("ECG (derivação II)"):
-                    st.pyplot(figura_ecg(selecao, "II", altura=2.4))
+                    exibir_png(ecg_png(selecao, "II", altura=2.4), "ECG — derivação II")
                 with st.expander("Exames em percentil extremo"):
                     st.dataframe(
                         dados.exames_extremos(laboratorio),
@@ -901,10 +960,10 @@ else:
                     with coluna:
                         st.markdown(f"##### `{pid}`")
                         if not resp.ok:
-                            st.error(f"Falha: {resp.erro}", icon=":material/error:")
+                            st.error(erro_amigavel(resp.erro), icon=":material/error:")
                             continue
                         rel = resp.relatorio
-                        st.image(caso_cache(pid).radiografia, width="stretch")
+                        exibir_png(radiografia_png(pid), f"Radiografia de {pid}")
                         st.markdown(f"**Resumo:** {rel.resumo or '—'}")
                         st.markdown("**Achados:** " + (", ".join(rel.positivos()) or "—"))
                         st.markdown("**Hipóteses:**")

@@ -19,7 +19,7 @@ RUN python3 -m venv /opt/venv && \
 
 ENV PATH="/opt/venv/bin:${PATH}"
 
-# Cria o owner local, importa o workflow do Drive e o deixa ATIVO no primeiro
+# Cria o owner local, importa o workflow de arquivamento e o deixa ATIVO no primeiro
 # boot. Sem isso o path /webhook/ não existe e o POST do app volta 404.
 COPY n8n/provisionar.mjs n8n/workflow-relatorio-clinico.json /opt/clinicalfusion/
 COPY n8n/entrypoint.sh /opt/clinicalfusion/entrypoint.sh

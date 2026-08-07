@@ -78,8 +78,8 @@ class ClienteLangChain(ClienteLLM):
             ) from exc
 
         # max_retries=1 desliga o retry interno do LangChain (padrao 6):
-        # com_retry() ja repete 3 vezes por fora, e 3x6=18 chamadas num
-        # 503 do provedor esgotam a cota diaria do free tier (20/dia).
+        # com_retry() ja repete 4 vezes por fora. Manter o retry interno no
+        # minimo evita uma cascata de chamadas quando o provedor devolve 503.
         opcoes = {"model": modelo, "max_output_tokens": max_tokens, "max_retries": 1}
         if modelo in _REJEITAM_THINKING_BUDGET:
             return ChatGoogleGenerativeAI(**opcoes)

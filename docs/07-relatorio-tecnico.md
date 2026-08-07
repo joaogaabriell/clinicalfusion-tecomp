@@ -269,7 +269,7 @@ Cobertura dos requisitos:
 | Comparação entre dois casos clínicos | ✅ | aba "Comparar 2 casos" |
 | Histórico de casos analisados | ✅ | histórico da sessão na barra lateral |
 | Explicação visual dos achados | ➖ | depende de bounding boxes do modelo — não implementado |
-| Integração com n8n | ➖ | requer instância n8n externa — documentado como guia, não executado |
+| Integração com n8n | ✅ | arquivamento do PDF em pasta local, opcionalmente sincronizada com o Drive da pessoa que estiver testando |
 
 ## 11. Análise das tecnologias
 

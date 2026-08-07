@@ -1,13 +1,13 @@
 /**
  * Provisiona o n8n no boot do container, de forma idempotente:
- * owner local, credencial do Google Drive, importacao do workflow e ativacao.
+ * owner local, importacao do workflow e ativacao.
  *
  * Substitui quatro passos manuais na interface do n8n. O ultimo e o critico:
  * enquanto o workflow nao esta ativo, o path /webhook/ nao existe e o POST do
  * app volta 404.
  *
- * A importacao nao sobrescreve um workflow existente, para nao apagar ajustes
- * feitos na interface; use CLINICALFUSION_N8N_FORCE_SYNC=1 para forcar.
+ * O workflow e gerenciado pelo projeto e reconciliado a cada boot. Isso tambem
+ * migra automaticamente a versao antiga que usava credenciais do Google.
  *
  * Toda falha aqui vira log e o processo sai 0: provisionamento nao pode impedir
  * o n8n de subir.
@@ -27,7 +27,7 @@ const OWNER = {
   password: process.env.CLINICALFUSION_N8N_OWNER_PASSWORD ?? 'ClinicalFusion2025',
 };
 
-const NOME_CREDENCIAL = 'ClinicalFusion Google Drive';
+const NOMES_ANTIGOS = ['Relatório Clínico → Google Drive'];
 
 const log = (msg) => console.log(`[provisionar] ${msg}`);
 
@@ -118,124 +118,17 @@ async function garantirOwner() {
   return false;
 }
 
-/** Le a service account de um caminho de arquivo ou de JSON inline. */
-function lerServiceAccount() {
-  const bruto = (process.env.CLINICALFUSION_GDRIVE_SA_JSON ?? '').trim();
-  if (!bruto) return null;
-  try {
-    const texto = bruto.startsWith('{')
-      ? bruto
-      : existsSync(bruto)
-        ? readFileSync(bruto, 'utf8')
-        : null;
-    if (!texto) {
-      log(`CLINICALFUSION_GDRIVE_SA_JSON aponta para um arquivo inexistente: ${bruto}`);
-      return null;
-    }
-    const sa = JSON.parse(texto);
-    if (!sa.client_email || !sa.private_key) {
-      log('JSON da service account sem client_email/private_key.');
-      return null;
-    }
-    return sa;
-  } catch (erro) {
-    log(`nao consegui ler a service account: ${erro.message}`);
-    return null;
-  }
-}
-
-/**
- * Monta a credencial do Google a partir do .env, ou null se nao houver nenhuma
- * configurada (ai o workflow entra sem credencial, para ser ligada na interface).
- *
- * Service account nao exige clique nenhum, mas precisa de um Drive compartilhado
- * porque nao tem cota propria. OAuth2 exige um unico clique em "Connect my
- * account": a tela de consentimento do Google nao e automatizavel.
- */
-function montarCredencial() {
-  const sa = lerServiceAccount();
-  if (sa) {
-    return {
-      tipo: 'googleApi',
-      autenticacao: 'serviceAccount',
-      dados: {
-        email: sa.client_email,
-        privateKey: sa.private_key,
-        inpersonate: Boolean(process.env.CLINICALFUSION_GDRIVE_DELEGATED_EMAIL),
-        delegatedEmail: process.env.CLINICALFUSION_GDRIVE_DELEGATED_EMAIL ?? '',
-      },
-    };
-  }
-
-  const clientId = (process.env.CLINICALFUSION_GOOGLE_CLIENT_ID ?? '').trim();
-  const clientSecret = (process.env.CLINICALFUSION_GOOGLE_CLIENT_SECRET ?? '').trim();
-  if (clientId && clientSecret) {
-    return {
-      tipo: 'googleDriveOAuth2Api',
-      autenticacao: 'oAuth2',
-      dados: { clientId, clientSecret },
-    };
-  }
-
-  return null;
-}
-
-async function garantirCredencial(cred) {
-  const lista = await api('GET', '/credentials');
-  const existentes = lista.json?.data ?? [];
-  const atual = existentes.find((c) => c.name === NOME_CREDENCIAL);
-
-  if (atual) {
-    // Nao mexemos numa credencial OAuth2 existente: o PATCH apagaria o
-    // oauthTokenData obtido no clique de consentimento.
-    if (cred.tipo === 'googleApi') {
-      await api('PATCH', `/credentials/${atual.id}`, {
-        name: NOME_CREDENCIAL,
-        type: cred.tipo,
-        data: cred.dados,
-      });
-    }
-    return { id: atual.id, name: NOME_CREDENCIAL };
-  }
-
-  const criada = await api('POST', '/credentials', {
-    name: NOME_CREDENCIAL,
-    type: cred.tipo,
-    data: cred.dados,
-  });
-  const idCriado = criada.json?.data?.id ?? criada.json?.id;
-  if (!criada.ok || !idCriado) {
-    log(`falha ao criar credencial (${criada.status}): ${JSON.stringify(criada.json)}`);
-    return null;
-  }
-  log(
-    cred.tipo === 'googleApi'
-      ? 'credencial de service account criada -- integracao 100% automatica.'
-      : 'credencial OAuth2 criada com client id/secret. Falta UM clique, uma vez: ' +
-          `abra ${BASE} > Credentials > "${NOME_CREDENCIAL}" > "Connect my account".`,
-  );
-  return { id: idCriado, name: NOME_CREDENCIAL };
-}
-
-function ligarCredencialNoNo(workflow, cred, referencia) {
-  for (const no of workflow.nodes) {
-    if (no.type !== 'n8n-nodes-base.googleDrive') continue;
-    no.parameters = { ...no.parameters, authentication: cred.autenticacao };
-    no.credentials = { [cred.tipo]: referencia };
-  }
-}
-
-async function garantirWorkflow(cred, referencia) {
+async function garantirWorkflow() {
   if (!existsSync(ARQUIVO_WORKFLOW)) {
     log(`workflow nao encontrado em ${ARQUIVO_WORKFLOW}; nada a importar.`);
     return;
   }
   const desejado = JSON.parse(readFileSync(ARQUIVO_WORKFLOW, 'utf8'));
-  if (cred && referencia) ligarCredencialNoNo(desejado, cred, referencia);
 
   const lista = await api('GET', '/workflows');
-  const atual = (lista.json?.data ?? []).find((w) => w.name === desejado.name);
-  const forcar = process.env.CLINICALFUSION_N8N_FORCE_SYNC === '1';
+  const atual = (lista.json?.data ?? []).find(
+    (w) => w.name === desejado.name || NOMES_ANTIGOS.includes(w.name),
+  );
 
   let id;
   if (!atual) {
@@ -256,18 +149,23 @@ async function garantirWorkflow(cred, referencia) {
     log(`workflow "${desejado.name}" importado.`);
   } else {
     id = atual.id;
-    if (forcar) {
-      const detalhe = await api('GET', `/workflows/${id}`);
-      await api('PATCH', `/workflows/${id}`, {
-        versionId: detalhe.json?.data?.versionId,
-        nodes: desejado.nodes,
-        connections: desejado.connections,
-        settings: desejado.settings ?? { executionOrder: 'v1' },
-      });
-      log(`workflow "${desejado.name}" ressincronizado (FORCE_SYNC=1).`);
-    } else {
-      log(`workflow "${desejado.name}" ja existe; mantido como esta.`);
+    const detalheAtual = await api('GET', `/workflows/${id}`);
+    if (!detalheAtual.json?.data?.versionId) {
+      log(`nao consegui ler o workflow existente ${id}; sincronizacao ignorada.`);
+      return;
     }
+    const atualizado = await api('PATCH', `/workflows/${id}`, {
+      versionId: detalheAtual.json.data.versionId,
+      name: desejado.name,
+      nodes: desejado.nodes,
+      connections: desejado.connections,
+      settings: desejado.settings ?? { executionOrder: 'v1' },
+    });
+    if (!atualizado.ok) {
+      log(`falha ao sincronizar (${atualizado.status}): ${JSON.stringify(atualizado.json)}`);
+      return;
+    }
+    log(`workflow "${desejado.name}" sincronizado.`);
   }
 
   // Sem ativo, /webhook/relatorio-clinico responde 404.
@@ -294,18 +192,7 @@ async function main() {
   }
   if (!(await garantirOwner())) return;
 
-  const cred = montarCredencial();
-  let referencia = null;
-  if (cred) {
-    referencia = await garantirCredencial(cred);
-  } else {
-    log(
-      'sem credencial do Google no .env (CLINICALFUSION_GDRIVE_SA_JSON ou ' +
-        'CLINICALFUSION_GOOGLE_CLIENT_ID/SECRET): o no do Drive vai entrar sem ' +
-        'credencial. Ligue uma na interface do n8n.',
-    );
-  }
-  await garantirWorkflow(cred, referencia);
+  await garantirWorkflow();
 }
 
 // Melhor-esforco: erro aqui nao pode derrubar o n8n.

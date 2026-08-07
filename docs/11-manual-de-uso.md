@@ -2,7 +2,10 @@
 
 > **Para quem vai avaliar o projeto.** Este documento explica como executar o
 > ClinicalFusion a partir do `.zip` recebido e o que fazer em cada tela. Não é
-> necessário instalar Docker, nem digitar comandos, nem configurar nada.
+> necessário instalar Docker, nem digitar comandos, nem configurar nada para o
+> uso normal. O arquivamento automático no Drive é um recurso opcional e tem
+> pré-requisitos próprios, descritos em
+> [`12-drive-automatico.md`](12-drive-automatico.md).
 >
 > Se você só quer começar, leia a seção 2 e pare. O resto é referência.
 
@@ -29,18 +32,20 @@ material disponibilizado veio incompleto (detalhes em
 
 ## 2. Como executar
 
-### 2.1 Pré-requisito único: Python 3.10 ou superior
+### 2.1 Pré-requisito único: Python 3.10, 3.11 ou 3.12
 
 O lançador verifica e avisa se estiver faltando. Para instalar:
 
 | Sistema | Como instalar |
 |---|---|
-| **Windows** | <https://www.python.org/downloads/> — na primeira tela do instalador, **marque "Add python.exe to PATH"** |
-| **macOS** | <https://www.python.org/downloads/> ou `brew install python@3.12` |
+| **Windows** | Instale o **Python 3.12** em <https://www.python.org/downloads/> — na primeira tela, marque **"Add python.exe to PATH"** |
+| **macOS** | Instale o **Python 3.12** pelo mesmo site ou use `brew install python@3.12` |
 | **Ubuntu/Debian** | `sudo apt install python3 python3-venv` |
 | **Fedora** | `sudo dnf install python3` |
 
-Não é preciso nada além disso. Nenhuma biblioteca precisa ser instalada à mão.
+Para o uso normal, não é preciso nada além disso e nenhuma biblioteca precisa
+ser instalada à mão. Somente o arquivamento automático no Drive exige Docker e
+Google Drive para computador.
 
 ### 2.2 Windows — `iniciar.bat`
 
@@ -55,7 +60,21 @@ Não é preciso nada além disso. Nenhuma biblioteca precisa ser instalada à m�
 > é um arquivo de texto — você pode abri-lo no Bloco de Notas e ler tudo o que ele
 > faz antes de executar.
 
-### 2.3 Linux ou macOS — `iniciar.sh`
+### 2.3 macOS — `iniciar.command`
+
+1. Descompacte o `.zip`.
+2. Dê duplo clique em **`iniciar.command`**.
+3. Se o macOS bloquear o arquivo na primeira vez, clique com o botão direito,
+   escolha **Abrir** e confirme.
+
+O ZIP gerado por `gerar-entrega.bat` preserva a permissão de execução desse
+arquivo. Como alternativa, abra um Terminal na pasta e execute:
+
+```bash
+bash iniciar.sh
+```
+
+### 2.4 Linux — `iniciar.sh`
 
 1. Descompacte o `.zip` numa pasta.
 2. Abra um Terminal nessa pasta e execute:
@@ -68,7 +87,7 @@ Não é preciso nada além disso. Nenhuma biblioteca precisa ser instalada à m�
    ```
 3. O navegador abre sozinho no aplicativo.
 
-### 2.4 O que esperar na primeira execução
+### 2.5 O que esperar na primeira execução
 
 ```
 === ClinicalFusion ===
@@ -83,21 +102,27 @@ Abrindo o ClinicalFusion em http://localhost:8501
 ```
 
 **A primeira execução leva alguns minutos e precisa de internet:** o lançador
-baixa as bibliotecas do Python (cerca de 150 MB) para uma pasta `.venv` **dentro
-da própria pasta do projeto**. Nada é instalado no resto do computador, e apagar
-a pasta do projeto remove tudo sem deixar resíduo.
+baixa as bibliotecas do Python (cerca de 150 MB) para uma pasta de ambiente
+virtual **dentro da própria pasta do projeto**: `.venv` no Windows,
+`.venv-linux` no Linux e `.venv-macos` no macOS. Nada é instalado no restante
+do computador, e apagar a pasta do projeto remove tudo sem deixar resíduo.
+
+No **WSL**, a venv é guardada em `~/.cache/clinicalfusion/`, no filesystem
+Linux. Isso evita a lentidão extrema de instalar milhares de arquivos em
+`/mnt/c`; o terminal mostra o caminho exato durante a inicialização.
 
 **Da segunda execução em diante abre em poucos segundos** — o lançador detecta
 que as dependências já estão instaladas e vai direto ao aplicativo.
 
-### 2.5 Como encerrar
+### 2.6 Como encerrar
 
 Feche a janela do terminal, ou pressione `Ctrl+C` nela. Fechar apenas a aba do
 navegador não encerra o programa.
 
-### 2.6 Para reabrir depois
+### 2.7 Para reabrir depois
 
-Basta dar duplo clique em `iniciar.bat` (ou rodar `./iniciar.sh`) outra vez.
+Basta dar duplo clique em `iniciar.bat` no Windows ou `iniciar.command` no
+macOS outra vez.
 
 ---
 
@@ -158,6 +183,12 @@ consumidos e custo estimado** da inferência.
 - **Baixar PDF** — exporta o relatório completo.
 - **Histórico** — na barra lateral, guarda os relatórios gerados na sessão.
 
+O envio automático para o Google Drive é opcional e não utiliza uma conta
+pré-configurada no projeto. Para fazer com que os PDFs sejam enviados ao Drive
+da própria pessoa que está testando, siga
+[`12-drive-automatico.md`](12-drive-automatico.md). Sem essa configuração, o
+botão **Baixar PDF** continua disponível normalmente.
+
 ---
 
 ## 4. De onde vêm os dados exibidos
@@ -202,8 +233,9 @@ comuns:
 
 | Mensagem no terminal | O que significa | O que fazer |
 |---|---|---|
-| `Python 3.10 ou superior nao encontrado` | Python ausente ou fora do PATH | Instale pelo link da seção 2.1. No Windows, marque "Add python.exe to PATH" |
+| `Python 3.10, 3.11 ou 3.12 nao encontrado` | Python ausente, fora do PATH ou versão ainda não validada | Instale o Python 3.12 pelo link da seção 2.1. No Windows, marque "Add python.exe to PATH" |
 | `Nao consegui criar o ambiente virtual` | Falta o módulo `venv` | Ubuntu/Debian: `sudo apt install python3-venv` |
+| `No module named pip` ou `sem suporte completo a venv/pip` | O Python do Ubuntu está sem o pacote que instala o `pip` na `.venv` | Para Python 3.12: `sudo apt install python3.12-venv`; depois execute `iniciar.sh` novamente |
 | `A instalacao das dependencias falhou` | Sem internet, ou rede bloqueando o PyPI | Confira a conexão e execute de novo |
 | `Port 8501 is already in use` | Outro programa ocupa a porta | Veja 5.1 |
 | O navegador não abriu | Só a abertura automática falhou | Abra manualmente <http://localhost:8501> — o aplicativo está rodando |
@@ -240,8 +272,10 @@ percorrer o fluxo inteiro.
 
 ### 5.3 Começar do zero
 
-Apague a pasta `.venv` de dentro do projeto e execute o lançador outra vez. Ele
-reconstrói o ambiente. Nada fora da pasta do projeto é afetado.
+Apague a pasta do ambiente correspondente ao seu sistema (`.venv` no Windows,
+`.venv-linux` no Linux ou `.venv-macos` no macOS) e execute o lançador outra
+vez. No WSL, use o caminho em `~/.cache/clinicalfusion/` mostrado pelo próprio
+inicializador. Ele reconstrói o ambiente.
 
 ---
 
@@ -254,6 +288,7 @@ reconstrói o ambiente. Nada fora da pasta do projeto é afetado.
 | Arquitetura da solução | [`04-arquitetura-solucao.md`](04-arquitetura-solucao.md) |
 | Benchmark dos modelos | [`06-benchmark-llm-multimodal.md`](06-benchmark-llm-multimodal.md) |
 | Automação com n8n (desafio extra) | [`09-integracao-n8n.md`](09-integracao-n8n.md) |
+| Envio automático para o Drive do avaliador | [`12-drive-automatico.md`](12-drive-automatico.md) |
 | Situação dos dados e o que é real vs. sintético | [`../data/README.md`](../data/README.md) |
 | Execução alternativa via Docker | [`../SETUP.md`](../SETUP.md) |
 
@@ -263,8 +298,11 @@ Os testes automatizados podem ser executados com:
 # Windows
 .venv\Scripts\python -m pytest -q
 
-# Linux / macOS
-.venv/bin/python -m pytest -q
+# Linux
+.venv-linux/bin/python -m pytest -q
+
+# macOS
+.venv-macos/bin/python -m pytest -q
 ```
 
 ### Arquivos do lançador
@@ -272,7 +310,9 @@ Os testes automatizados podem ser executados com:
 | Arquivo | Função |
 |---|---|
 | `iniciar.bat` | Lançador do Windows |
-| `iniciar.sh` | Lançador de Linux e macOS |
+| `iniciar.command` | Lançador de duplo clique do macOS |
+| `iniciar.sh` | Lançador de terminal do Linux/macOS |
+| `gerar-entrega.bat` | Gera o ZIP local incluindo `.env`, sem Git/venv/dados credenciados |
 | `abrir_navegador.py` | Abre o navegador quando o servidor começa a responder |
 | `COMO-EXECUTAR.md` | Início rápido, na raiz do projeto |
 

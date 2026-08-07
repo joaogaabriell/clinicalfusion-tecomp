@@ -5,7 +5,11 @@
 .env
 .env.*
 !.env.example
+secrets/
+dist/
+*.zip
 .venv/
+.venv-*/
 .git/
 __pycache__/
 .pytest_cache/

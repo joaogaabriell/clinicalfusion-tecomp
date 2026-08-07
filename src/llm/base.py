@@ -56,7 +56,7 @@ def _e_transitorio(exc: Exception) -> bool:
     return any(marca in msg for marca in _MARCADORES_TRANSITORIOS)
 
 
-def com_retry(fn, tentativas: int = 3, base_espera: float = 1.5):
+def com_retry(fn, tentativas: int = 4, base_espera: float = 1.5):
     """
     Executa fn com algumas tentativas em caso de erro transitorio do provedor.
 

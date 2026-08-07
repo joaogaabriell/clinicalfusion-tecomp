@@ -99,6 +99,34 @@ def test_imagem_para_base64_roundtrip():
     assert recuperada.size == (8, 8)
 
 
+def test_retry_aguenta_tres_503_antes_de_responder(monkeypatch):
+    tentativas = 0
+    esperas = []
+
+    def chamar():
+        nonlocal tentativas
+        tentativas += 1
+        if tentativas < 4:
+            raise RuntimeError("503 UNAVAILABLE: high demand")
+        return "ok"
+
+    monkeypatch.setattr(base.time, "sleep", esperas.append)
+
+    assert base.com_retry(chamar) == "ok"
+    assert tentativas == 4
+    assert esperas == [1.5, 3.0, 6.0]
+
+
+def test_retry_nao_repete_erro_permanente(monkeypatch):
+    esperas = []
+    monkeypatch.setattr(base.time, "sleep", esperas.append)
+
+    with pytest.raises(RuntimeError, match="invalid authentication"):
+        base.com_retry(lambda: (_ for _ in ()).throw(RuntimeError("401 invalid authentication")))
+
+    assert esperas == []
+
+
 def test_catalogo_usa_apenas_gemini():
     # "demo" nao e provedor de API (relatorio simulado, ver demo_client.py):
     # a decisao da equipe vale para os provedores que consomem chave.
@@ -110,6 +138,11 @@ def test_catalogo_usa_apenas_gemini():
 def test_selecionar_padrao_retorna_gemini():
     selecionados = catalogo.selecionar()
     assert {m.provedor for m in selecionados} == {"google"}
+
+
+def test_flash_lite_e_o_modelo_padrao():
+    assert catalogo.CATALOGO[0].chave == "gemini-flash-lite"
+    assert catalogo.CHAVES_PADRAO[0] == "gemini-flash-lite"
 
 
 def test_demo_fica_fora_do_benchmark_padrao():

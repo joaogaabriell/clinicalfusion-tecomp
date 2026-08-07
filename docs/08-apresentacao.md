@@ -124,7 +124,7 @@ Python · Streamlit · Pandas · Pillow · Matplotlib · **LangChain** · Google
 ## 12. Limitações e próximos passos
 
 - Ground-truth **parcial** (só cobre casos com radiografia real); ECG **mock**; quota/custo de API.
-- Próximos: rubrica humana da qualidade textual, explicação visual dos achados, execução efetiva da automação via n8n (hoje documentada e implementada no código, mas depende de uma instância n8n externa ativa).
+- Próximos: rubrica humana da qualidade textual e explicação visual dos achados. A automação via n8n já está implementada; para sincronizar com o Drive, cada avaliador configura a própria pasta local conforme `docs/12-drive-automatico.md`.
 
 🎙️ Ser honesto sobre limites — é um projeto educacional.
 

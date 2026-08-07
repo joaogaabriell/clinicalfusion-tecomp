@@ -1,5 +1,5 @@
 """
-Envio do relatorio pronto ao workflow do n8n, que arquiva o PDF no Google Drive.
+Envio do relatorio pronto ao workflow do n8n, que arquiva o PDF localmente.
 
 A interface ja tem o relatorio e o PDF em maos quando o usuario clica em "Gerar
 relatorio". Em vez de o n8n refazer a inferencia (o que custaria uma segunda
@@ -19,7 +19,7 @@ import urllib.request
 
 from . import config
 
-# Path do no Webhook no workflow "Relatorio Clinico -> Google Drive".
+# Path do no Webhook no workflow "Relatorio Clinico -> pasta sincronizada".
 # /webhook/ (producao) exige o workflow ATIVO no n8n; /webhook-test/ so responde
 # enquanto o botao "Test workflow" estiver escutando, e serve para depurar.
 URL_PADRAO = "http://localhost:5678/webhook/relatorio-clinico"
@@ -109,7 +109,7 @@ def enviar_relatorio(
             # o path /webhook/ so existe enquanto o workflow esta ativo.
             raise ErroN8N(
                 "O n8n respondeu 404. Ative o workflow "
-                '"Relatório Clínico → Google Drive" (chave Active, canto '
+                '"Relatório Clínico → pasta sincronizada" (chave Active, canto '
                 "superior direito) -- a URL de producao so responde com ele ativo."
             ) from exc
         raise ErroN8N(f"O n8n respondeu HTTP {exc.code}. {detalhe}") from exc

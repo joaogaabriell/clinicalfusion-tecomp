@@ -42,7 +42,9 @@ Clinical-Fusion---TECOMP/
 │   ├── 07-relatorio-tecnico.md          # relatório técnico (entregável)
 │   ├── 08-apresentacao.md               # roteiro de slides
 │   ├── 09-integracao-n8n.md             # automação (desafio extra)
-│   └── 10-roteiro-video.md              # roteiro do vídeo demonstrativo (entregável)
+│   ├── 10-roteiro-video.md              # roteiro do vídeo demonstrativo (entregável)
+│   ├── 11-manual-de-uso.md              # execução e uso da interface
+│   └── 12-drive-automatico.md            # configuração opcional por avaliador
 ├── data/                     # dados (reais ficam locais/ignorados; ver data/README.md)
 ├── src/                      # código-fonte da aplicação
 │   ├── config.py             # caminhos, specs das modalidades, metadados do MIMIC
@@ -87,7 +89,7 @@ Clinical-Fusion---TECOMP/
 | **1** | Conhecer o dataset, selecionar os casos, organizar as modalidades, definir a arquitetura | ✅ |
 | **2** | Leitura das imagens, ECGs e exames laboratoriais; interface inicial | ✅ |
 | **3** | Integrar o LLM multimodal, desenvolver prompts, gerar relatórios, validar respostas | ✅ |
-| 4 | Testes finais, refinamento, documentação, apresentação e vídeo | 🔄 (falta o vídeo) |
+| 4 | Testes finais, refinamento, documentação, apresentação e vídeo | ✅ |
 
 **Requisitos:** RF01–RF10 implementados. **Extras (+20%):** comparação de LLMs
 (benchmark), painel de métricas (tempo/custo), tradução para o paciente, PDF,
@@ -130,6 +132,17 @@ python -m streamlit run app/streamlit_app.py
 ```
 
 O protótipo abre em <http://localhost:8501>. Detalhes em [`app/README.md`](app/README.md).
+
+### Arquivamento automático no Google Drive
+
+O projeto não inclui conta nem credencial do Google Drive. Por padrão, o
+relatório aparece na tela e pode ser baixado em PDF. Para arquivar cada relatório
+automaticamente no Drive da própria pessoa que está testando, siga a seção de
+configuração em [`docs/12-drive-automatico.md`](docs/12-drive-automatico.md).
+
+Esse recurso usa o n8n para gravar em uma pasta local e o Google Drive para
+computador para sincronizá-la. Não exige Google Cloud, Client ID, Client Secret
+ou service account.
 
 > 🔒 O passo 2 exige **credenciamento no PhysioNet** — cada integrante baixa a própria cópia. A licença do dataset **proíbe compartilhar os dados**, inclusive entre a equipe e em repositório privado. Ver [`SETUP.md`](SETUP.md) e [`data/README.md`](data/README.md).
 

@@ -92,14 +92,14 @@ class ModeloCandidato:
 # testados com uma chamada real em 2026-07-31.
 CATALOGO: list[ModeloCandidato] = [
     ModeloCandidato(
-        "gemini-flash", "google", "gemini-3.5-flash", _fabrica("google"),
-        "Melhor qualidade flash -- padrao do projeto.",
-        preco_entrada=0.30, preco_saida=2.50,
+        "gemini-flash-lite", "google", "gemini-3.5-flash-lite", _fabrica("google"),
+        "Mais barato e com cota separada -- padrao do projeto.",
+        preco_entrada=0.075, preco_saida=0.30,
     ),
     ModeloCandidato(
-        "gemini-flash-lite", "google", "gemini-3.5-flash-lite", _fabrica("google"),
-        "Mais barato -- p/ testar bastante. Precos a confirmar.",
-        preco_entrada=0.075, preco_saida=0.30,
+        "gemini-flash", "google", "gemini-3.5-flash", _fabrica("google"),
+        "Melhor qualidade flash, sujeito a uma cota propria.",
+        preco_entrada=0.30, preco_saida=2.50,
     ),
     ModeloCandidato(
         "gemini-pro", "google", "gemini-pro-latest", _fabrica("google"),
@@ -116,7 +116,7 @@ CATALOGO: list[ModeloCandidato] = [
 ]
 
 # Subconjunto padrao para uma comparacao rapida.
-CHAVES_PADRAO = ("gemini-flash", "gemini-flash-lite")
+CHAVES_PADRAO = ("gemini-flash-lite", "gemini-flash")
 
 
 def por_chave(chave: str) -> ModeloCandidato:
