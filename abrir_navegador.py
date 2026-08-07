@@ -15,9 +15,11 @@ Uso:
 """
 
 import socket
+import subprocess
 import sys
 import time
 import webbrowser
+from platform import release
 
 PORTA_PADRAO = 8501
 ESPERA_MAXIMA_S = 90.0
@@ -36,6 +38,23 @@ def esperar_porta(porta: int, limite_s: float = ESPERA_MAXIMA_S) -> bool:
     return False
 
 
+def abrir_url(url: str) -> bool:
+    """Abre a URL no navegador adequado ao ambiente."""
+    if "microsoft" in release().lower():
+        try:
+            subprocess.run(
+                ["cmd.exe", "/c", "start", "", url],
+                check=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            return True
+        except (OSError, subprocess.CalledProcessError):
+            return False
+
+    return webbrowser.open(url)
+
+
 def main() -> int:
     porta = int(sys.argv[1]) if len(sys.argv) > 1 else PORTA_PADRAO
     url = f"http://localhost:{porta}"
@@ -45,7 +64,8 @@ def main() -> int:
         print(f"[abrir_navegador] o app nao respondeu em {ESPERA_MAXIMA_S:.0f}s; abra {url} manualmente.")
         return 1
 
-    webbrowser.open(url)
+    if not abrir_url(url):
+        print(f"[abrir_navegador] nao consegui abrir o navegador; acesse {url}.")
     return 0
 
 
